@@ -143,6 +143,26 @@
 #define CCU_RES_DCAP_REG             0x1A00
 #define CCU_RES_DCAP_USB_PHY_GATE    BIT3
 
+// CLK_SERDES_PHY_CFG + RST_BUS_SERDES — drive the Cadence combo PHY subsystem.
+// Without these, the DWC3 AHB/AXI bus fabric at 0x06A00000 is gated and GCTL reads 0.
+//   bsp/drivers/clk/sunxi-ng/ccu-sun60iw2.c:
+//     serdes_phy_cfg_clk: reg 0x13C0, gate BIT31
+//     RST_BUS_SERDES:     reg 0x13C4, BIT16
+//   bsp/drivers/phy/sunxi-cadence-combophy.c::sunxi_cadence_phy_serdes_init()
+#define CCU_SERDES_PHY_CFG_REG       0x13C0
+#define CCU_SERDES_RST_REG           0x13C4
+#define CCU_SERDES_PHY_CFG_GATE      BIT31
+#define CCU_SERDES_RST_BIT           BIT16
+
+// Cadence serdes subsystem top register at 0x06C00000.
+// SUBSYS_USB3P1_BGR +0x0008: BIT17=USB3P1_ACLK_EN (AXI), BIT16=USB3P1_HCLK_EN (AHB).
+// combo_usb_clk_set(true) in Linux sets these — they gate the DWC3 core bus.
+//   bsp/drivers/phy/sunxi-cadence-combophy.c::combo_usb_clk_set()
+#define A733_SERDES_SUBSYS_BASE      0x06C00000ULL
+#define SERDES_SUBSYS_USB3P1_BGR     0x0008
+#define SERDES_USB3P1_ACLK_EN        BIT17
+#define SERDES_USB3P1_HCLK_EN        BIT16
+
 #define CCU_USB_CLK_LIVE_VALUE       0xC0000000  // gate + PHY_RSTN deasserted
 #define CCU_USB_GATE_RST_LIVE_VALUE  0x00110011  // ehci+ohci gates + resets deasserted
 #define CCU_USB_REF_LIVE_VALUE       0x80000000  // ref clock gate
@@ -338,6 +358,36 @@ SunxiUsbCcuInit (
     MmioRead32 (A733_CCU_BASE + CCU_USB2_RST_REG)));
 
   MicroSecondDelay (50);
+
+  // 7. Cadence serdes subsystem — enable bus clocks to DWC3.
+  //
+  // sunxi_cadence_phy_serdes_init() in Linux (called at serdes driver probe,
+  // before any per-PHY init) does exactly these three writes. Without them,
+  // the DWC3 AHB/AXI slave at 0x06A00000 is bus-gated: GCTL reads 0 and
+  // writes are silently dropped (build #34 symptom).
+  //
+  // Order: clock gate first, then reset deassert, then subsys AHB/AXI enable.
+  Old = MmioRead32 (A733_CCU_BASE + CCU_SERDES_PHY_CFG_REG);
+  DEBUG ((DEBUG_ERROR, "  CCU+0x13C0 (serdes_phy_cfg) was 0x%08x\n", Old));
+  MmioWrite32 (A733_CCU_BASE + CCU_SERDES_PHY_CFG_REG, Old | CCU_SERDES_PHY_CFG_GATE);
+  DEBUG ((DEBUG_ERROR, "  CCU+0x13C0 now 0x%08x\n",
+    MmioRead32 (A733_CCU_BASE + CCU_SERDES_PHY_CFG_REG)));
+  MicroSecondDelay (10);
+
+  Old = MmioRead32 (A733_CCU_BASE + CCU_SERDES_RST_REG);
+  DEBUG ((DEBUG_ERROR, "  CCU+0x13C4 (serdes_rst) was 0x%08x\n", Old));
+  MmioWrite32 (A733_CCU_BASE + CCU_SERDES_RST_REG, Old | CCU_SERDES_RST_BIT);
+  DEBUG ((DEBUG_ERROR, "  CCU+0x13C4 now 0x%08x\n",
+    MmioRead32 (A733_CCU_BASE + CCU_SERDES_RST_REG)));
+  MicroSecondDelay (50);
+
+  Old = MmioRead32 (A733_SERDES_SUBSYS_BASE + SERDES_SUBSYS_USB3P1_BGR);
+  DEBUG ((DEBUG_ERROR, "  SERDES+0x0008 (usb3p1_bgr) was 0x%08x\n", Old));
+  MmioWrite32 (A733_SERDES_SUBSYS_BASE + SERDES_SUBSYS_USB3P1_BGR,
+               Old | SERDES_USB3P1_ACLK_EN | SERDES_USB3P1_HCLK_EN);
+  DEBUG ((DEBUG_ERROR, "  SERDES+0x0008 now 0x%08x\n",
+    MmioRead32 (A733_SERDES_SUBSYS_BASE + SERDES_SUBSYS_USB3P1_BGR)));
+  MicroSecondDelay (10);
 
   // Settle.
   MicroSecondDelay (100);
@@ -733,11 +783,9 @@ SunxiUsbDxeEntry (
     DEBUG ((DEBUG_ERROR, "  xHCI2 post-DWC3-init: +0x0000=0x%08x\n", Cap1));
   }
 
-  // Build #34 result: GCTL itself reads/writes as 0 -> the whole xHCI
-  // MMIO window is still dead even after our CCU init. CCU is missing
-  // something (likely a bus-clock / MBUS gate / SUSPEND mux). Disable
-  // registration again until we figure out what.
-#if 0
+  // Build #42: serdes bus-clock fix (CCU+0x13C0/0x13C4 + SERDES+0x0008) should
+  // make GCTL readable. DWC3 init above (PHYSOFTRST + GCTL soft-reset + HOST mode)
+  // now has a live bus to work with. Register xHCI2 for XhciDxe.
   Status = RegisterNonDiscoverableMmioDevice (
              NonDiscoverableDeviceTypeXhci,
              NonDiscoverableDeviceDmaTypeNonCoherent,
@@ -745,7 +793,6 @@ SunxiUsbDxeEntry (
              0x06A00000ULL, 0x00100000ULL
              );
   DEBUG ((DEBUG_ERROR, "SunxiUsbDxe: xHCI2 register: %r\n", Status));
-#endif
 
   // EHCI0 - left-bottom USB-A port. Build #31 fixed the
   // OTG-PHY-routing order (OTG+0x420 &= ~BIT0 now happens before the
