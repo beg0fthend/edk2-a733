@@ -1,0 +1,13 @@
+[Unit]
+Description=Clear EDK2 boot attempt flag (one-shot guarantee)
+DefaultDependencies=no
+Before=local-fs.target sysinit.target
+After=local-fs-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '/bin/rm -f /boot/try_edk2; /bin/sync'
+
+[Install]
+WantedBy=sysinit.target

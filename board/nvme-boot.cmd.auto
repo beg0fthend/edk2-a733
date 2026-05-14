@@ -1,0 +1,69 @@
+# Orange Pi 4 Pro NVMe boot script — auto-recovery edition (file-flag).
+#
+# Default behavior: BOOT LINUX. EDK2 only runs if /boot/try_edk2 flag exists.
+# One-shot is guaranteed by an early-boot systemd unit on the Linux side
+# that deletes /boot/try_edk2 the moment Linux comes up. So:
+#
+#   * To attempt EDK2:
+#       ssh orangepi 'sudo touch /boot/try_edk2 && sudo reboot'
+#   * If EDK2 boots fine and chains/returns to Linux: flag removed, done.
+#   * If EDK2 hangs: power-cycle. Flag is still there, so EDK2 is tried
+#     ONE more time. If it hangs again, power-cycle a 2nd time — but at
+#     that point the user can SD-recover. To avoid loops, we also support
+#     a "skip_edk2" flag (legacy) for hard override.
+#
+# This is the simplest robust scheme that works without fw_setenv.
+
+setenv load_addr "0x43100000"
+setenv overlay_error "false"
+setenv verbosity "1"
+setenv console "both"
+setenv bootlogo "false"
+setenv rootfstype "ext4"
+setenv docker_optimizations "on"
+setenv earlycon "on"
+
+echo "Boot script loaded from ${devtype} ${devnum}"
+
+if test -e ${devtype} ${devnum} ${prefix}orangepiEnv.txt; then
+        load ${devtype} ${devnum} ${load_addr} ${prefix}orangepiEnv.txt
+        env import -t ${load_addr} ${filesize}
+fi
+
+# --- EDK2 chainload (opt-in via /boot/try_edk2) ---
+if test -e ${devtype} ${devnum} ${prefix}skip_edk2; then
+        echo "*** skip_edk2 flag present - hard override, booting Linux  ***"
+elif test -e ${devtype} ${devnum} ${prefix}try_edk2; then
+        echo "*** try_edk2 present - attempting EDK2 boot                ***"
+        echo "*** ( If hangs: power-cycle; Linux will clear flag.        ***"
+        echo "***   To force-skip: touch /boot/skip_edk2 from SD recover.) ***"
+        if load ${devtype} ${devnum} ${kernel_addr_r} ${prefix}ORANGEPI4PRO_EFI.uimg; then
+                load ${devtype} ${devnum} ${fdt_addr_r} ${prefix}dtb/${fdtfile}
+                fdt addr ${fdt_addr_r}
+                fdt resize 65536
+                setenv bootargs "earlycon earlyprintk=sunxi-uart,0x02500000 console=ttyS0,115200"
+                bootm ${kernel_addr_r} - ${fdt_addr_r}
+                echo "*** EDK2 returned cleanly - falling through to Linux       ***"
+        else
+                echo "*** ORANGEPI4PRO_EFI.uimg not found - falling through      ***"
+        fi
+else
+        echo "*** No try_edk2 flag - booting Linux directly              ***"
+fi
+# --- end EDK2 chainload ---
+
+if test "${console}" = "display" || test "${console}" = "both"; then setenv consoleargs "console=tty1"; fi
+if test "${console}" = "serial" || test "${console}" = "both"; then setenv consoleargs "console=ttyS0,115200 ${consoleargs}"; fi
+if test "${earlycon}" = "on"; then setenv consoleargs "earlyprintk=sunxi-uart,0x02500000 initcall_debug=0 ${consoleargs}"; fi
+
+part uuid ${devtype} ${devnum}:1 partuuid
+if test -z "${rootdev}"; then rootdev=PARTUUID="${partuuid}"; fi
+setenv bootargs "root=${rootdev} rootwait rootfstype=${rootfstype} ${consoleargs} consoleblank=0 loglevel=${verbosity} clk_ignore_unused swiotlb=65536 ${extraargs} ${extraboardargs}"
+if test "${docker_optimizations}" = "on"; then setenv bootargs "${bootargs} cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory swapaccount=1"; fi
+
+load ${devtype} ${devnum} ${ramdisk_addr_r} ${prefix}uInitrd
+load ${devtype} ${devnum} ${kernel_addr_r} ${prefix}uImage
+load ${devtype} ${devnum} ${fdt_addr_r} ${prefix}dtb/${fdtfile}
+fdt addr ${fdt_addr_r}
+fdt resize 65536
+bootm ${kernel_addr_r} ${ramdisk_addr_r} ${fdt_addr_r}
