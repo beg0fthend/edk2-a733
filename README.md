@@ -140,6 +140,60 @@ sometimes load a stale firmware.
 
 ---
 
+## Dev workflow — booting Linux without the SD card
+
+Historically, the only way to boot stock Linux (for ssh / deploy /
+recovery) was to **insert the rescue SD card**, because the no-SD path
+runs the NVMe BSP U-Boot which always chainloads EDK2. This made every
+debug round-trip a physical SD swap.
+
+The NVMe `/boot/boot.cmd` is now patched to short-circuit the EDK2
+chainload when a flag file `/boot/skip_edk2` exists on NVMe:
+
+```text
+if test -e ${devtype} ${devnum} ${prefix}skip_edk2; then
+        echo "*** /boot/skip_edk2 flag present - SKIPPING EDK2, booting stock Linux ***"
+else
+        # ... existing EDK2 chainload (load uimg, fdt, bootm) ...
+fi
+```
+
+The exact patched script and the original (pre-flag) version are
+checked in under [`board/`](./board/) so the device-side change is
+captured in the repo.
+
+### Day-to-day cycle (no more SD swaps)
+
+| Goal                              | Action                                                                  |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| Boot stock Linux for ssh / deploy | `sudo touch /boot/skip_edk2 && sudo reboot`                             |
+| Boot the in-dev EDK2              | `sudo rm /boot/skip_edk2 && sudo reboot`                                |
+| Deploy a new EDK2 build           | `bash build_edk2.sh --deploy` (writes `/boot/ORANGEPI4PRO_EFI.uimg`)    |
+| EDK2 hard-bricks the chain        | Reinsert the rescue SD card (only fallback that bypasses NVMe U-Boot)   |
+
+`/boot` here **must be the NVMe rootfs** (verify with
+`findmnt -no SOURCE /` → expect `/dev/nvme0n1p1`). If you booted via
+the SD-card path then `/` is the eMMC clone with the same UUID and the
+flag file there is ignored by U-Boot.
+
+### Reverting the patch
+
+On the board (booted into Linux):
+
+```bash
+sudo cp /boot/boot.cmd.pre-skip /boot/boot.cmd
+sudo mkimage -C none -A arm -T script -d /boot/boot.cmd /boot/boot.scr
+sudo sync
+```
+
+### Recreating the patch from scratch
+
+If the NVMe boot partition is ever wiped, copy
+[`board/nvme-boot.cmd`](board/nvme-boot.cmd) to `/boot/boot.cmd` on the
+board and re-run `mkimage` as above.
+
+---
+
 ## Key bring-up findings
 
 These are the non-obvious issues that had to be solved. Documented here
@@ -390,6 +444,7 @@ edk2-a733/
 │   ├── Include/
 │   └── AArch32Stub/                     # legacy 32-bit jump stub (unused)
 ├── research/                            # live BSP register captures + scripts
+├── board/                               # on-device boot.cmd (NVMe) — patched + original
 ├── patches/
 ├── build_edk2.sh
 ├── spi_factory_backup.bin               # 16 MB SPI dump for restore
