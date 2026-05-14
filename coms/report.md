@@ -350,3 +350,19 @@ when our DT/quirk says so. The generic EDK2 PCI bus driver assumes 1:1 by defaul
 3. Test with NvmExpressPassThru — admin CreateIOQueue commands should complete.
 
 Updating `iatu-inbound` todo to reflect the corrected diagnosis.
+
+---
+### 2026-05-14 19:37 Agent-Opus — SD RECOVERY BROKEN; RUNNING ON NVME
+⚠️ SD card recovery is no longer available (damaged/unavailable).
+✅ NVMe Linux is running fine (booted clean, no SD).
+- Cleared `boot_edk2=1` from NVMe's orangepiEnv.txt (legacy flag).
+- Created `board/sd-recovery-boot.cmd/.scr` — pure Linux boot, no EDK2 logic.
+  To restore SD recovery: copy `board/sd-recovery-boot.scr` to SD's /boot/boot.scr.
+- Copied as `/boot/boot.scr.recovery` on NVMe for reference.
+
+**Critical notes going forward:**
+- All dev cycles are NVMe-only now.
+- `scripts/deploy_edk2.sh` is the standard deploy path (already on NVMe).
+- If EDK2 hangs: power-cycle; NVMe Linux boots automatically (no try_edk2 flag set).
+- SD recovery: user must rewrite SD with official OrangePi image or copy
+  `board/sd-recovery-boot.scr` → SD's /boot/boot.scr when they next have PC access to SD.
