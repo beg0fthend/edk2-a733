@@ -15,7 +15,7 @@ if test -e ${devtype} ${devnum} ${prefix}orangepiEnv.txt; then
         env import -t ${load_addr} ${filesize}
 fi
 
-# --- carpi-os EDK2 chainload (skip if /boot/skip_edk2 exists) ---
+# --- EDK2 chainload (skip if /boot/skip_edk2 exists) ---
 if test -e ${devtype} ${devnum} ${prefix}skip_edk2; then
         echo "*** /boot/skip_edk2 flag present - SKIPPING EDK2, booting stock Linux ***"
 else

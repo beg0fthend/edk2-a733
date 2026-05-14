@@ -134,8 +134,16 @@
   INF  MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
   INF  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiUsbDxe/SunxiUsbDxe.inf
 
+  # PCIe / NVMe: state-replay of BSP-U-Boot-enumerated NVMe controller
+  INF  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiPcieDxe/SunxiPcieDxe.inf
+  INF  MdeModulePkg/Bus/Pci/NvmExpressDxe/NvmExpressDxe.inf
+
   # Display: SimpleFB GOP (passes BSP-programmed framebuffer through to UEFI)
   INF  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiSimpleFbGopDxe/SunxiSimpleFbGopDxe.inf
+
+  # SMBIOS protocol producer + Allwinner A733 record publisher.
+  INF  MdeModulePkg/Universal/SmbiosDxe/SmbiosDxe.inf
+  INF  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiSmbiosDxe/SunxiSmbiosDxe.inf
 
   # GraphicsConsoleDxe: bind ConsoleOut to the GOP framebuffer so boot
   # manager menus / Shell prompt render on the panel, not just UART.
@@ -143,6 +151,8 @@
 
   INF  MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
   INF  MdeModulePkg/Application/UiApp/UiApp.inf
+  INF  MdeModulePkg/Application/BootManagerMenuApp/BootManagerMenuApp.inf
+  INF  MdeModulePkg/Universal/DriverHealthManagerDxe/DriverHealthManagerDxe.inf
   INF  MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
   INF  MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
   INF  MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf

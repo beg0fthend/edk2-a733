@@ -44,3 +44,5 @@
   gEfiGraphicsOutputProtocolGuid
 
 [Pcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString

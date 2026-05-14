@@ -44,7 +44,7 @@ GOP driver that takes ownership of the DE3.0 mixer0 scanout pipeline.
 After EDK2 takes the panel and brings up EHCI1 + USB2 PHY:
 
 ```
-Orange Pi 4 Pro UEFI (Allwinner A733) - carpi-os edk2-a733
+Orange Pi 4 Pro UEFI (Allwinner A733)
 HCI@0x04200000 +0x824 (UTMI_STAT)=0x00000008    <-- USB2 PHY clock valid
 EhcInitHC: pre-PSE  USBCMD=0x00080B01 PORTSC=0x00001800
 ......
@@ -385,10 +385,33 @@ contributor can do *register-state replay* without rediscovery:
   unlock register (likely in CCU or a SYS_CTRL block). Without it, no
   driver can program the iATU or read root-port config space.
 - The NVMe BAR0 at `0x22100000` *does* respond (`0x0a013FFF` = valid
-  NVMe `CAP`), so the link IS up and BSP U-Boot already enumerated and
-  assigned BARs. We just can't *enumerate again* from EDK2 because
-  `PciHostBridgeDxe` needs config-space cycles and config space is
-  locked.
+  NVMe `CAP`) **when the snapshot is taken from a running BSP Linux
+  kernel** — Linux's PCIe driver programs an outbound iATU window so
+  the CPU PA range is mapped to the endpoint.
+- **State-replay-from-U-Boot does NOT work** (build #40, May 2026):
+  BSP U-Boot's `pci enum; nvme scan; nvme dev 0` succeeds (link up
+  Gen3, vendor 0x15b7, 953 GB SSD detected) and U-Boot can boot from
+  it, but by the time control reaches BL33 the BAR0 reads `0xFFFFFFFF`
+  again. U-Boot's `bootm`/iATU is torn down at handoff, OR the BSP
+  U-Boot driver only programs an inbound window long enough for its
+  own NVMe accesses and unmaps before exit.
+- A skeleton driver is in place:
+  [`Drivers/SunxiPcieDxe`](Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiPcieDxe/SunxiPcieDxe.c).
+  It probes BAR0 and only registers as `NonDiscoverableDeviceTypeNvme`
+  if the controller responds — currently it (correctly) refuses.
+- `MdeModulePkg/Bus/Pci/NvmExpressDxe` is wired into the dsc/fdf so
+  the moment the BAR comes alive it will bind.
+- **Next move options** (in order of likely effort):
+  1. Find the DBI unlock register in
+     `bsp/drivers/pcie/pcie-sunxi-rc.c` (search for writes to anything
+     in the CCU `0x02002000` range or the SYS_CFG `0x03000000` range
+     gated on `pcie` strings) — gives full enumeration capability.
+  2. Reverse the iATU programming U-Boot does (offsets relative to
+     `0x06300000` classic-iATU window) and replay it from EDK2 by
+     scribbling raw values — only works if writes hit even with DBI
+     locked, which is unlikely.
+  3. Patch BSP U-Boot to skip the NVMe deinit during `bootm` exit so
+     EDK2 inherits a live mapping.
 - Snapshot: [`research/sun60iw2-pcie-dbi-snapshot.txt`](research/sun60iw2-pcie-dbi-snapshot.txt)
 
 ### Wall 3 — Ethernet
