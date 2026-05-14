@@ -754,41 +754,50 @@ SunxiUsbDxeEntry (
 
     Cap0 = MmioRead32 (0x06A00000);
     DEBUG ((DEBUG_ERROR, "  xHCI2 pre-DWC3-init: +0x0000=0x%08x\n", Cap0));
+    DEBUG ((DEBUG_ERROR, "  GUSB3PIPECTL0 pre  = 0x%08x\n",
+      MmioRead32 (0x06A00000 + 0xC2C0)));
 
-    // Assert PHY soft reset on both USB2 and USB3 PHY-cfg blocks.
-    MmioOr32  (0x06A00000 + 0xC200, BIT31);  // GUSB2PHYCFG0.PHYSOFTRST
+    // Build #46: Suspend BOTH USB2 (BIT6 in GUSB2PHYCFG0) and USB3 (BIT17 in
+    // GUSB3PIPECTL0) PHY interfaces before PHYSOFTRST.  Without USB2 SUSPHY,
+    // DWC3 keeps polling the shared UTMI; when EhciDxe later reconfigures
+    // that PHY, DWC3 detects a PHY error and self-resets → CAPLENGTH→0 when
+    // XhciDxe probes ~30s later. Build #45 confirmed byte reads work (Read8=0x30)
+    // so the self-reset (not a bus-width issue) is the only remaining culprit.
+    MmioOr32 (0x06A00000 + 0xC200, BIT6);   // GUSB2PHYCFG0.SUSPHY
+    MmioOr32 (0x06A00000 + 0xC2C0, BIT17);  // GUSB3PIPECTL0.SUSPHY
+    MicroSecondDelay (10);
+
+    // USB3 PIPE soft reset only (skip USB2 PHYSOFTRST — that resets SUSPHY
+    // and DWC3 tries to re-establish UTMI, fighting with EhciDxe).
     MmioOr32  (0x06A00000 + 0xC2C0, BIT31);  // GUSB3PIPECTL0.PHYSOFTRST
     MicroSecondDelay (200);
-    MmioAnd32 (0x06A00000 + 0xC200, ~(UINT32)BIT31);
-    MmioAnd32 (0x06A00000 + 0xC2C0, ~(UINT32)BIT31);
+    MmioAnd32 (0x06A00000 + 0xC2C0, ~(UINT32)BIT31);  // SUSPHY (BIT17) stays
     MicroSecondDelay (200);
 
-    // Toggle DWC3 core soft reset (GCTL bit 11).
+    // Skip GCTL.CORESOFTRESET (BIT11): the core reset re-runs PHY init which
+    // again races with EhciDxe. GCTL was 0x1 (default from U-Boot); we just
+    // need to switch PRTCAPDIR to HOST.
     GCtl = MmioRead32 (0x06A00000 + 0xC100);
     DEBUG ((DEBUG_ERROR, "  DWC3 GCTL was 0x%08x\n", GCtl));
-    MmioOr32  (0x06A00000 + 0xC100, BIT11);
-    MicroSecondDelay (50);
-    MmioAnd32 (0x06A00000 + 0xC100, ~(UINT32)BIT11);
-    MicroSecondDelay (50);
-
-    // Set PRTCAPDIR = HOST (1) in GCTL[13:12]. Clear, then set bit 12.
-    GCtl = MmioRead32 (0x06A00000 + 0xC100);
     GCtl &= ~(UINT32)(BIT12 | BIT13);
-    GCtl |=  BIT12;
+    GCtl |=  BIT12;  // PRTCAPDIR=HOST
     MmioWrite32 (0x06A00000 + 0xC100, GCtl);
+
+    // Re-set USB2 SUSPHY after PRTCAPDIR change (PRTCAPDIR write may load
+    // defaults for the new mode).
+    MmioOr32 (0x06A00000 + 0xC200, BIT6);   // GUSB2PHYCFG0.SUSPHY
+
     DEBUG ((DEBUG_ERROR, "  DWC3 GCTL now 0x%08x\n",
       MmioRead32 (0x06A00000 + 0xC100)));
+    DEBUG ((DEBUG_ERROR, "  GUSB2PHYCFG0 = 0x%08x  (SUSPHY=BIT6 should be set)\n",
+      MmioRead32 (0x06A00000 + 0xC200)));
+    DEBUG ((DEBUG_ERROR, "  GUSB3PIPECTL0= 0x%08x  (SUSPHY=BIT17 should be set)\n",
+      MmioRead32 (0x06A00000 + 0xC2C0)));
 
     Cap1 = MmioRead32 (0x06A00000);
     DEBUG ((DEBUG_ERROR, "  xHCI2 post-DWC3-init: +0x0000=0x%08x\n", Cap1));
   }
 
-  // Build #42: xHCI registered and DWC3 GCTL confirmed live (0x1→0x1001).
-  // Build #43: XhciDxe attaches and hangs on HCRESET — USB3 PIPE (Cadence
-  // combo0_usb PHY) is uninitialized so the USB3 port state-machine never
-  // halts. Suppress registration until Cadence PHY init is implemented.
-  // Keep the DWC3 CCU/serdes init above so the GCTL diag prints remain.
-#if 0
   Status = RegisterNonDiscoverableMmioDevice (
              NonDiscoverableDeviceTypeXhci,
              NonDiscoverableDeviceDmaTypeNonCoherent,
@@ -796,7 +805,6 @@ SunxiUsbDxeEntry (
              0x06A00000ULL, 0x00100000ULL
              );
   DEBUG ((DEBUG_ERROR, "SunxiUsbDxe: xHCI2 register: %r\n", Status));
-#endif
 
   // EHCI0 - left-bottom USB-A port. Build #31 fixed the
   // OTG-PHY-routing order (OTG+0x420 &= ~BIT0 now happens before the
