@@ -783,9 +783,12 @@ SunxiUsbDxeEntry (
     DEBUG ((DEBUG_ERROR, "  xHCI2 post-DWC3-init: +0x0000=0x%08x\n", Cap1));
   }
 
-  // Build #42: serdes bus-clock fix (CCU+0x13C0/0x13C4 + SERDES+0x0008) should
-  // make GCTL readable. DWC3 init above (PHYSOFTRST + GCTL soft-reset + HOST mode)
-  // now has a live bus to work with. Register xHCI2 for XhciDxe.
+  // Build #42: xHCI registered and DWC3 GCTL confirmed live (0x1→0x1001).
+  // Build #43: XhciDxe attaches and hangs on HCRESET — USB3 PIPE (Cadence
+  // combo0_usb PHY) is uninitialized so the USB3 port state-machine never
+  // halts. Suppress registration until Cadence PHY init is implemented.
+  // Keep the DWC3 CCU/serdes init above so the GCTL diag prints remain.
+#if 0
   Status = RegisterNonDiscoverableMmioDevice (
              NonDiscoverableDeviceTypeXhci,
              NonDiscoverableDeviceDmaTypeNonCoherent,
@@ -793,6 +796,7 @@ SunxiUsbDxeEntry (
              0x06A00000ULL, 0x00100000ULL
              );
   DEBUG ((DEBUG_ERROR, "SunxiUsbDxe: xHCI2 register: %r\n", Status));
+#endif
 
   // EHCI0 - left-bottom USB-A port. Build #31 fixed the
   // OTG-PHY-routing order (OTG+0x420 &= ~BIT0 now happens before the

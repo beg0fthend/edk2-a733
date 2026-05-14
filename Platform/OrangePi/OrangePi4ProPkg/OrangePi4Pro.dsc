@@ -223,7 +223,7 @@
   # number that goes with the rev.
   #
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor|L"Orange Pi 4 Pro EDK2 Port (beg0fthend)"
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString|L"v0.2-xHCI-serdes build #42"
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString|L"v0.2-NVMe build #43"
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareReleaseDateString|L"2026-05-14"
 
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultBaudRate|115200
