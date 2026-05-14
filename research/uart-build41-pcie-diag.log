@@ -1,0 +1,294 @@
+[08.575]battery temp is -1
+2420 bytes read in 1 ms (2.3 MiB/s)
+## Executing script at 43100000
+Boot script loaded from nvme 0
+180 bytes read in 1 ms (175.8 KiB/s)
+*** Chainloading EDK2 UEFI firmware ***
+*** ( To skip next boot: touch /boot/skip_edk2 from Linux )      ***
+CACHE: Misaligned operation at range [bc169000, bc169ff8]
+CACHE: Misaligned operation at range [bc169000, bc169ff8]
+CACHE: Misaligned operation at range [bc169000, bc169ff8]
+CACHE: Misaligned operation at range [bc169000, bc169ff8]
+4194368 bytes read in 29 ms (137.9 MiB/s)
+CACHE: Misaligned operation at range [bc169000, bc169ff8]
+214367 bytes read in 8 ms (25.6 MiB/s)
+## Booting kernel from Legacy Image at 41000000 ...
+   Image Name:   EDK2 UEFI
+   Image Type:   ARM Linux Kernel Image (uncompressed)
+   Data Size:    4194304 Bytes = 4 MiB
+   Load Address: 41000000
+   Entry Point:  41000000
+   Verifying Checksum ... OK
+## Flattened Device Tree blob at 43000000
+   Booting using the fdt blob at 0x43000000
+[09.232]Starting kernel ...
+
+[09.235]total: 9235 ms
+
+ret 0
+NOTICE:  [SCP] :wait arisc ready....
+NOTICE:  [SCP] :arisc version: []
+NOTICE:  [SCP] :arisc startup ready
+NOTICE:  [SCP] :arisc startup notify message feedback
+NOTICE:  [SCP] :sunxi-arisc driver is starting
+NOTICE:  BL3-1: Next image address = 0x41000000
+NOTICE:  BL3-1: Next image spsr = 0x3c5
+EVF123abczgdf45pqr00034790:sEDK2: CEntryPoint
+EDK2: PrePiMain enteredEDK2: ArchInitialize done
+EDK2: HobConstructor done
+EDK2: InvalidateDataCacheRange done
+EDK2: ProcessLibraryConstructorList done
+MMU1MMU2EDK2: MemoryPeim done
+UEFI firmware (version v0.2-EHCI build #39 built at 05:44:46 on May 14 2026)
+ProtectUefiImage failed to create image properties record
+ProtectUefiImage failed to create image properties record
+ProtectUefiImage failed to create image properties record
+SunxiUsbDxe: entry
+  ENTRY PHY @0x06B00000 +0x10=0x00000000 +0x18=0x00000000 +0x1A00(CCU)=0x00000008
+  ENTRY PHY write-probe: wrote 0xDEADBEEF, read back 0x00000000
+SunxiUsbDxe: PD on begin
+  R_CCU+0x01AC (r_ppu) was 0x00000001
+  PCK600 USB2 status was 0x00000008
+  PCK600 USB2 already on
+SunxiUsbDxe: PD on done
+SunxiUsbDxe: CCU init begin
+  CCU+0x05C0 (AHB gate) was 0x110103FF
+  CCU+0x05E0 (mbus gate0) was 0xF1055803
+  CCU+0x05E4 (mbus gate1) was 0x00000005
+  CCU+0x05A4 (msi_lite2) was 0x00030001
+  CCU+0x05A4 (msi_lite2) now 0x00030001
+  CCU+0x1A00 (res_dcap/phy mclk) was 0x00000008
+  CCU+0x1300 (usb0_clk/phy_rst) was 0x00000000
+  CCU+0x1304 (usb0 gate+rst) was 0x00000000
+  CCU+0x1308 (usb1_clk/phy_rst) was 0x00000000
+  CCU+0x130C (usb1 gate+rst) was 0x00000000
+  CCU+0x1340 (usb_ref) was 0x80000000
+  CCU+0x1348 (usb2_u2_ref) was 0x00000000
+    after = 0x80000000
+  CCU+0x1350 (usb2_suspend) was 0x00000000
+    after = 0x81000000
+  CCU+0x1354 (usb2_mf/bus) was 0x00000000
+    after = 0x80000000
+  CCU+0x135C (usb2_rst) was 0x00000000
+    after = 0x00010000
+SunxiUsbDxe: CCU init done
+SunxiUsbDxe: PHY init begin
+  SYSCFG+0x160 (rescal) was 0x00C81103
+  SYSCFG+0x164 (res0)   was 0x00C8C8C8
+  SYSCFG+0x160 now 0x00C81112  +0x164 now 0x00C8C800
+  SYSCFG+0x160 (rescal) was 0x00C81112
+  SYSCFG+0x164 (res0)   was 0x00C8C800
+  SYSCFG+0x160 now 0x00C81132  +0x164 now 0x00C80000
+  OTG+0x420 (phy_cfg) was 0x00000001
+  OTG+0x420 (phy_cfg) now 0x00000000
+  HCI@0x04101000: assert phy_rst on CCU+0x1300
+  HCI@0x04101000 +0x808 was 0x00000000
+  HCI@0x04101000 +0x810 was 0x00034818
+  HCI@0x04101000 +0x800 was 0x00000000
+  HCI@0x04101000 +0x818 was 0x063333D4
+  HCI@0x04101000 +0x81C was 0x00000053, writing 0x53
+  HCI@0x04101000: deassert phy_rst on CCU+0x1300
+  HCI@0x04101000 +0x81C now 0x00000053  +0x824 (UTMI_STAT)=0x00000008
+  HCI@0x04101000 +0x800=0x00008B01 +0x808=0x00000000 +0x810=0x00034810 +0x818=0x063338C6
+  HCI@0x04200000: assert phy_rst on CCU+0x1308
+  HCI@0x04200000 +0x808 was 0x00000000
+  HCI@0x04200000 +0x810 was 0x00034818
+  HCI@0x04200000 +0x800 was 0x00000000
+  HCI@0x04200000 +0x818 was 0x063333D4
+  HCI@0x04200000 +0x81C was 0x00000053, writing 0x53
+  HCI@0x04200000: deassert phy_rst on CCU+0x1308
+  HCI@0x04200000 +0x81C now 0x00000053  +0x824 (UTMI_STAT)=0x00000008
+  HCI@0x04200000 +0x800=0x00008B01 +0x808=0x00000000 +0x810=0x00034810 +0x818=0x063338C6
+  SYSCFG+0x160 (pre-bit10) = 0x00C81132
+  SYSCFG+0x160 (post-bit10) = 0x00C81532
+  PHY@0x06B00000 PRE  +0x10=0x00000000 +0x18=0x00000000 +0x30=0x00000000 +0x38=0x00000000
+  PHY@0x06B00000 POST +0x10=0x00000000 +0x18=0x00000000 +0x30=0x00000000 +0x38=0x00000000
+  PIO PB_MUX0 was 0x00000000
+  PIO PB_DAT  was 0x00000000
+  PIO PB_MUX0 now 0x00000000  PB_DAT now 0x00000000
+SunxiUsbDxe: PHY init done
+SunxiUsbDxe: EHCI0 HCCAPBASE=0x01000010 HCSPARAMS=0x00001101 HCCPARAMS=0x0000A026
+SunxiUsbDxe: EHCI0 USBCMD=0x00080B00 USBSTS=0x00001000 USBINTR=0x00000000 CONFIGFLAG=0x00000000
+SunxiUsbDxe: EHCI0 PORTSC0=0x00003000
+SunxiUsbDxe: EHCI1 HCCAPBASE=0x01000010 HCSPARAMS=0x00001101 HCCPARAMS=0x0000A026
+SunxiUsbDxe: EHCI1 USBCMD=0x00080B00 USBSTS=0x00001000 USBINTR=0x00000000 CONFIGFLAG=0x00000000
+SunxiUsbDxe: EHCI1 PORTSC0=0x00003000
+  xHCI2 pre-DWC3-init: +0x0000=0x00000000
+  DWC3 GCTL was 0x00000000
+  DWC3 GCTL now 0x00000000
+  xHCI2 post-DWC3-init: +0x0000=0x00000000
+SunxiUsbDxe: EHCI0 register: Success
+SunxiUsbDxe: EHCI1 register: Success
+SunxiPcieDxe: ENTRY diag
+  app @0x06400000 LTSSM=0x00000041 INT_EN_CLR=0x00000000 LINK_STAT=0x00000013
+  DBI @0x06000000 PORT_LINK=0x00010120 LINK_SPEED=0x00000178 MISC1=0x00000040
+  RC  @0x22200000 VID|DID=0x0A013FFF  RevID|Class=0x00010400
+SunxiPcieDxe: NVMe @ 0x22100000 CAP_LO=0xFFFFFFFF VS=0xFFFFFFFF
+SunxiPcieDxe: NVMe BAR0 reads invalid (link torn down at bootm) - skipping
+  Next step is bring-up; see file header for sequence.
+ProtectUefiImage failed to create image properties record
+ProtectUefiImage failed to create image properties record
+ProtectUefiImage failed to create image properties record
+[2J[001;001H[=3h[2J[001;001
+========================================================
+ Orange Pi 4 Pro UEFI  (Allwinner A733, ARMv8.2-A)
+ Firmware: v0.2-EHCI build #39
+ Vendor:   Orange Pi 4 Pro EDK2 Port (beg0fthend)
+========================================================
+  ESC / F2  -  Setup
+  F11 / F7  -  Boot Menu
+  F12       -  PXE / Network boot (when available)
+========================================================
+
+EhcInitSched: PeriodFrame Buf=0x7FFFF000 PhyAddr=0x7FFFF000 Bytes=0x1000
+EhcInitSched: ReclaimHead PciAddr=0x7FFEF080
+EhcInitHC: pre-PSE  USBCMD=0x00080B01 USBSTS=0x00000000 PERLISTBASE=0x7FFFF000 ASYNCBASE=0x7FFEF080 CFGFLAG=0x00000001 PORTSC=0x00001000
+EhcInitSched: PeriodFrame Buf=0x7FFEE000 PhyAddr=0x7FFEE000 Bytes=0x1000
+EhcInitSched: ReclaimHead PciAddr=0x7FFDE080
+EhcInitHC: pre-PSE  USBCMD=0x00080B01 USBSTS=0x00000000 PERLISTBASE=0x7FFEE000 ASYNCBASE=0x7FFDE080 CFGFLAG=0x00000001 PORTSC=0x00001800
+Discovered 3 boot option(s):
+  Boot0000  BootManagerMenuApp  ->  MemoryMapped(0xB,0x1BFA1C000,0x1BFCFA1AF)/FvFile(EEC25BDC-67F2-4D95-B1D5-F81B2039D11D)
+  Boot0001  Enter Setup  ->  MemoryMapped(0xB,0x1BFA1C000,0x1BFCFA1AF)/FvFile(462CAA21-7614-4503-836E-8AB6F4662331)
+  Boot0002  UEFI Shell  ->  MemoryMapped(0xB,0x1BFA1C000,0x1BFCFA1AF)/FvFile(7C04A583-9E3E-4F1C-AD65-E05268D0B4D1)
+......[2J[001;001H[0m[30m[40m[001;001H                                                                                [002;001H                                                                                [003;001H                                                                                [004;001H                                                                                [005;001H                                                                                [006;001H                                                                                [007;001H                                                                                [008;001H                                                                                [009;001H                                                                                [010;001H                                                                                [011;001H                                                                                [012;001H                                                                                [013;001H                                                                                [014;001H                                                                                [015;001H                                                                                [016;001H                                                                                [017;001H                                                                                [018;001H                                                                                [019;001H                                                                                [020;001H                                                                                [021;001H                                                                                [022;001H                                                                                [023;001H                                                                                [024;001H                                                                                [025;001H                                                                                                                                                                [001;001H[0m[34m[47m[001;001H                                                                                [002;001H                                                                                [003;001H                                                                                [004;001H                                                                                [005;001H                                                                                [006;001H                                                                                [001;001H[002;002HOrange Pi 4 Pro[003;002HAllwinner A733 (4x A76 + 4x A55)[003;054H1.80 GHz[004;002Hv0.2-EHCI build #39[004;054H6144 MB RAM[005;002H[005;054H[006;002H[006;054H[0m[37m[40m[021;001H                                                                                [022;001H                                                                                [023;001H                                                                                [024;001H                                                                                [021;001H[0m[30m[40m[025;053H  [025;054H  [025;055H  [025;056H  [025;057H  [025;058H  [025;059H  [025;060H  [025;061H  [025;062H  [025;063H  [025;064H  [025;065H  [025;066H  [025;067H  [025;068H  [025;069H  [025;070H  [025;071H  [025;072H  [025;073H  [0m[30m[47m[007;001H                                                                                [008;001H                                                                                [009;001H                                                                                [010;001H                                                                                [011;001H                                                                                [012;001H                                                                                [013;001H                                                                                [014;001H                                                                                [015;001H                                                                                [016;001H                                                                                [017;001H                                                                                [018;001H                                                                                [019;001H                                                                                [020;001H                                                                                [007;001H[007;001H                                                                                [0m[37m[40m[008;031H<Standard English>[0m[30m[47m[008;049H         [008;001H   [008;004HSelect Language            [0m[34m[47m[009;001H   [009;004H                                                      [010;001H   [010;004H                                                      [0m[30m[47m[011;001H   [011;004HContinue                                              [012;001H   [012;004HReset                                                 [013;001H                                                         [014;001H                                                         [015;001H                                                         [016;001H                                                         [017;001H                                                         [018;001H                                                         [019;001H                                                         [020;001H                                                                                [0m[37m[40m[023;002H [022;002H [022;053H                           [022;027H                          [023;053H                           [023;003H^v=Move Highlight       [022;003H                        [023;027H<Enter>=Select Entry      [0m[34m[47m[008;058HThis is the option     [009;058Hone adjusts to change  [010;058Hthe language for the   [011;058Hcurrent system         [012;058H                       [013;058H                       [014;058H                       [015;058H                       [016;058H                       [017;058H                       [018;058H                       [019;058H                       [019;080H ‘  ......
+
+
+[246]HELLO! BOOT0 is starting!
+[249]BOOT0 commit : {a2322351}
+[252]board gpio withstand voltage auto mode
+[267]vaild para:4  select dram para1
+[271][mmc]: mmc driver ver 2024-03-20 10:36
+[280][mmc]: Wrong media type 0x0
+[283][mmc]: ***Try SD card 0***
+[292][mmc]: HSSDR52/SDR25 4 bit
+[295][mmc]: 50000000 Hz
+[298][mmc]: 488400 MB
+[300][mmc]: ***SD/MMC 0 init OK!!!***
+[305]boot param - magic error 
+[308]DRAM BOOT DRIVE INFO: V0.601
+[313]DRAM_VCC set to 560 mv
+[315]DRAM CLK =1800 MHZ
+[318]DRAM Type =9 (8:LPDDR4,9:LPDDR5)
+[464]Training result is = 7
+[467]DRAM Pstate 1 training, frequency is 1200 Mhz
+[644]Training result is = 7
+[647]DRAM Pstate 2 training, frequency is 800 Mhz
+[990]Training result is = 7
+[993]DRAM Pstate 3 training, frequency is 400 Mhz
+[6000]Training result is = 7
+[6002]DRAM Pstate 0 training, frequency is 1800 Mhz
+[6011]Actual DRAM SIZE =6144 M
+[6014]DRAM SIZE =6144 MBytes, para1 = a10a, para2 = 18001001, dram_tpr13 = 10065
+[6029]DRAM simple test OK.
+[6100]error: dtb not found for scp
+[6104]mmc not para
+[6105]Jump to ATF: monitor_base = 0x48000000, uboot_base = 0x4a000000, optee_base = 0x0
+NOTICE:  BL31: OP-TEE 32bit detected
+NOTICE:  BL31: U-BOOT 32bit detected
+NOTICE:  BL31: v2.5(debug):7dddb263a-dirty
+NOTICE:  BL31: Built : 21:40:11, Dec 30 2024
+NOTICE:  BL31: No DTB found.
+ERROR:   Error initializing runtime service opteed_fast
+amp fw boot before!!!
+amp fw boot after!!!
+
+
+U-Boot 2018.07-orangepi-config-dirty (Nov 26 2025 - 11:20:14 +0800) Allwinner Technology
+
+[06.161]CPU:   Allwinner Family
+[06.164]Model: sun60iw2
+I2C:   ready
+[06.227]DRAM:  6 GiB
+[06.234]Relocation Offset is: 75ea3000
+[06.292]secure enable bit: 0
+[06.296]PMU: AXP8191
+[06.297]PMU: AXP8191 VER_A
+[06.302]bmu_axp515_probe pmic_bus_read fail
+[06.306][AXP8191] onoff status: 0x50 = 0x1, 0x51 = 0x0
+[06.311][AXP8191] charge status: 0x4 = 0x0
+[06.315]CPU=1014 MHz,PLL6=1200 Mhz,AHB=200 Mhz, APB1=24Mhz  MBus=600Mhz
+[06.321]gic: sec monitor mode
+SPI ALL:   ready
+[06.364]flash init start
+[06.367]workmode = 0,storage type = 1
+[06.370][mmc]: mmc driver ver uboot2018:2024-10-18 9:01:00 -- uboot2018:2025-03-28 10:03:00
+[06.378][mmc]: get sdc_type fail and use default host:tm1.
+[06.386][mmc]: can't find node "mmc0",will add new node
+[06.391][mmc]: fdt err returned <no error>
+[06.395][mmc]: Using default timing para
+[06.398][mmc]: SUNXI SDMMC Controller Version:0x50530
+[06.418][mmc]: card_caps:0x3000000a
+[06.421][mmc]: host_caps:0x3000003f
+[06.424]sunxi flash init ok
+get value error
+[06.429]Loading Environment from EXT4... ** No device specified **
+Failed (-5)
+No ethernet found.
+[06.468]NOT support bridge yet
+[06.470]Warn: no find panel or bridge
+[06.571]drm hdmi get mode: 1024x600@60Hz
+hdmi0@5520000:  detailed mode clock 51200 kHz, flags[5]
+    H: 1024 1184 1208 1344
+    V: 0600 0612 0614 0635
+bus_format: 0
+Trying device: mmc dev 0
+mmc0 is current device
+
+Partition Map for MMC device 0  --   Partition Type: DOS
+
+Part	Start Sector	Num Sectors	UUID		Type
+  1	65536     	990150656 	bfe1db9b-01	83
+Trying to get file size from 0:1, file: /boot/boot.bmp
+Found file: /boot/boot.bmp, size: 0x38438 (230456 bytes)
+230456 bytes read in 17 ms (12.9 MiB/s)
+clk_set_rate: <NULL> has NULL parent
+[06.703]suxni tcon hdmi set rate: 51200000Hz and get diff: -51200000Hz
+[06.770]battery temp is -1
+Hit any key to stop autoboot:  1  0 
+mmc0 is current device
+Scanning mmc 0:1...
+Found U-Boot script /boot/boot.scr
+2638 bytes read in 9 ms (286.1 KiB/s)
+## Executing script at 43100000
+Boot script loaded from mmc 0
+168 bytes read in 7 ms (23.4 KiB/s)
+14563604 bytes read in 672 ms (20.7 MiB/s)
+25053256 bytes read in 1138 ms (21 MiB/s)
+214367 bytes read in 22 ms (9.3 MiB/s)
+## Booting kernel from Legacy Image at 41000000 ...
+   Image Name:   Linux kernel
+   Image Type:   ARM Linux Kernel Image (uncompressed)
+   Data Size:    25053192 Bytes = 23.9 MiB
+   Load Address: 41000000
+   Entry Point:  41000000
+   Verifying Checksum ... OK
+## Loading init Ramdisk from Legacy Image at 43300000 ...
+   Image Name:   uInitrd
+   Image Type:   ARM Linux RAMDisk Image (gzip compressed)
+   Data Size:    14563540 Bytes = 13.9 MiB
+   Load Address: 00000000
+   Entry Point:  00000000
+   Verifying Checksum ... OK
+## Flattened Device Tree blob at 43000000
+   Booting using the fdt blob at 0x43000000
+   Loading Ramdisk to 4921c000, end 49fff8d4 ... OK
+[10.158]Starting kernel ...
+
+[10.161]total: 10161 ms
+
+[10.163][mmc]: MMC Device 2 not found
+[10.167][mmc]: mmc 2 not find, so not exit
+ret 0
+NOTICE:  [SCP] :wait arisc ready....
+NOTICE:  [SCP] :arisc version: []
+NOTICE:  [SCP] :arisc startup ready
+NOTICE:  [SCP] :arisc startup notify message feedback
+NOTICE:  [SCP] :sunxi-arisc driver is starting
+NOTICE:  BL3-1: Next image address = 0x41000000
+NOTICE:  BL3-1: Next image spsr = 0x3c5
+[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x412fd050]
+[    0.000000] Linux version 5.15.147-sun60iw2 (root@7f67d6d98873) (aarch64-none-linux-gnu-gcc (GNU Toolchain for the Arm Architecture 11.2-2022.02 (arm-11.14)) 11.2.1 20220111, GNU ld (GNU Toolchain for the Arm Architecture 11.2-2022.02 (arm-11.14)) 2.37.20220122) #1.0.6 SMP PREEMPT Wed Nov 26 03:21:10 UTC 2025
+[    0.000000] Machine model: sun60iw2
+[    0.000000] printk: bootconsole [earlycon0] enabled
+[    0.000000] AW BSP version: 7b992010f2-dirty, 2025-04-29 09:35:36
+[    0.000000] AW BSP version: 7b992010f2-dirty, 2025-04-29 09:35:36

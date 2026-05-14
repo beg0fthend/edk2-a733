@@ -379,40 +379,73 @@ contributor can do *register-state replay* without rediscovery:
 
 ### Wall 2 — PCIe / NVMe
 
-- The PCIe controller is DesignWare. The DBI register window at
-  `0x06000000` reads back as **all `0xFF`** from a running BSP
-  kernel — meaning DBI access is gated by an Allwinner-specific
-  unlock register (likely in CCU or a SYS_CTRL block). Without it, no
-  driver can program the iATU or read root-port config space.
-- The NVMe BAR0 at `0x22100000` *does* respond (`0x0a013FFF` = valid
-  NVMe `CAP`) **when the snapshot is taken from a running BSP Linux
-  kernel** — Linux's PCIe driver programs an outbound iATU window so
-  the CPU PA range is mapped to the endpoint.
-- **State-replay-from-U-Boot does NOT work** (build #40, May 2026):
-  BSP U-Boot's `pci enum; nvme scan; nvme dev 0` succeeds (link up
-  Gen3, vendor 0x15b7, 953 GB SSD detected) and U-Boot can boot from
-  it, but by the time control reaches BL33 the BAR0 reads `0xFFFFFFFF`
-  again. U-Boot's `bootm`/iATU is torn down at handoff, OR the BSP
-  U-Boot driver only programs an inbound window long enough for its
-  own NVMe accesses and unmaps before exit.
-- A skeleton driver is in place:
-  [`Drivers/SunxiPcieDxe`](Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiPcieDxe/SunxiPcieDxe.c).
-  It probes BAR0 and only registers as `NonDiscoverableDeviceTypeNvme`
-  if the controller responds — currently it (correctly) refuses.
-- `MdeModulePkg/Bus/Pci/NvmExpressDxe` is wired into the dsc/fdf so
-  the moment the BAR comes alive it will bind.
-- **Next move options** (in order of likely effort):
-  1. Find the DBI unlock register in
-     `bsp/drivers/pcie/pcie-sunxi-rc.c` (search for writes to anything
-     in the CCU `0x02002000` range or the SYS_CFG `0x03000000` range
-     gated on `pcie` strings) — gives full enumeration capability.
-  2. Reverse the iATU programming U-Boot does (offsets relative to
-     `0x06300000` classic-iATU window) and replay it from EDK2 by
-     scribbling raw values — only works if writes hit even with DBI
-     locked, which is unlikely.
-  3. Patch BSP U-Boot to skip the NVMe deinit during `bootm` exit so
-     EDK2 inherits a live mapping.
+**Hardware** — Synopsys DesignWare PCIe Root Complex with Allwinner
+glue (compatible `allwinner,sunxi-pcie-v300-rc` per BSP DT). Register
+windows (BSP `bsp/drivers/pcie/pcie-sunxi-{rc,plat}.c`):
+
+| Window     | PA          | Size    | Purpose                                  |
+|------------|-------------|---------|------------------------------------------|
+| DBI        | `0x06000000`| `0x480000` | Standard DesignWare CSRs + iATU       |
+| app_base   | `0x06400000`| (DBI+0x400000) | Allwinner glue: LTSSM_CTRL @ +0xc00, INT_ENABLE_CLR @ +0xe04, LINK_STAT @ +0xe0c |
+| RC cfg     | `0x22200000`| (iATU)  | Root-port config space                   |
+| Endpoint   | `0x22100000`| `0x4000`| NVMe BAR0                                |
+
+DBI is **not behind an unlock register** — earlier theory was wrong.
+DBI/app_base/iATU are gated by:
+- power domain `SUN60IW2_PCK_PCIE`
+- 3 resets: `RST_BUS_PCIE0`, `RST_BUS_PCIE0_PWRUP`, `RST_BUS_ITS_PCIE0`
+- 3 clocks: `CLK_PCIE0_AUX`, `CLK_PCIE0_AXI_SLV` (400 MHz),
+  `CLK_ITS_PCIE0_A`
+- combo PHY (`combo1_pcie` at `0x06c02000` + `0x06ca0000`,
+  `allwinner,cadence-combophy`)
+- LTSSM enabled in `app_base + 0xc00`
+- iATU outbound windows programmed at `DBI + 0x300000`
+
+**State at BL33 entry (build #41, 2026-05-14)** — UART captured at
+`research/uart-build41-pcie-diag.log`:
+
+```
+SunxiPcieDxe: ENTRY diag
+  app @0x06400000 LTSSM=0x00000041 INT_EN_CLR=0x00000000 LINK_STAT=0x00000013
+  DBI @0x06000000 PORT_LINK=0x00010120 LINK_SPEED=0x00000178 MISC1=0x00000040
+  RC  @0x22200000 VID|DID=0x0A013FFF  RevID|Class=0x00010400
+SunxiPcieDxe: NVMe @ 0x22100000 CAP_LO=0xFFFFFFFF VS=0xFFFFFFFF
+```
+
+Decoded: **the link survives bootm.** `LTSSM_CTRL` bit0 still set,
+`LINK_STAT` SMLH+RDLH bits both up, DBI core registers sane, RC bridge
+reachable (Class=0x0604 PCI-PCI bridge). Only the **endpoint at
+0x22100000 still reads 0xFF** — because U-Boot's `.remove` invalidated
+the iATU outbound windows (DesignWare core scrubs them on
+disable). The rest of the controller (clocks, PHY, LTSSM) was left up.
+
+The earlier "U-Boot tears down everything at bootm" theory was wrong.
+The fix is much smaller than feared — no clock/PHY/LTSSM bring-up
+required, just iATU re-programming.
+
+**Action plan** (build #42, in flight) — three iATU writes from
+`SunxiPcieDxe`:
+
+1. iATU OB region 0 = CFG type-0, cpu=`0x22200000`, target=bus 1 dev 0
+   (`0x01000000`), size 1 MB.
+2. Read NVMe CFG space at `0x22200000` to confirm (VID/DID, BAR0).
+3. Write NVMe BAR0 = `0x22100000` (preserve type bits) +
+   iATU OB region 1 = MEM, cpu=pci=`0x22100000`, size 16 KB.
+4. Set `PCI_COMMAND.{Memory, Master, SERR}` on the NVMe.
+5. Verify `0x22100000` returns valid CAP, then
+   `RegisterNonDiscoverableMmioDevice` (existing).
+
+If clocks/PHY/LTSSM ever do break post-bootm in some other firmware
+path, the full BSP bring-up sequence is documented in
+`Drivers/SunxiPcieDxe/SunxiPcieDxe.c` header.
+
+**BSP source location** — sparse-checked-out at
+`/home/jacob/bsp-ref/orange-pi-5.15-sun60iw2/` (gitee
+`orangepi-xunlong/orange-pi-5.15-sun60iw2`).
+
 - Snapshot: [`research/sun60iw2-pcie-dbi-snapshot.txt`](research/sun60iw2-pcie-dbi-snapshot.txt)
+  — captured from running Linux, not BL33 entry-state.
+- Build #41 UART: [`research/uart-build41-pcie-diag.log`](research/uart-build41-pcie-diag.log)
 
 ### Wall 3 — Ethernet
 
