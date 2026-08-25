@@ -248,10 +248,17 @@ SunxiSmbiosEntryPoint (
 
   //
   // Type 4 - Processor
-  // The Allwinner A733 is an octa-core ARMv8.2-A: 4x Cortex-A76 + 4x
+  // The Allwinner A733 is an octa-core ARMv8.2-A: 2x Cortex-A76 + 6x
   // Cortex-A55 in a big.LITTLE arrangement. We report a single physical
-  // socket with 8 cores / 8 threads. Speeds are nominal — A76 max
-  // ~2.0 GHz, A55 ~1.8 GHz.
+  // socket with 8 cores / 8 threads.
+  //
+  // The split is 2+6, not the 4+4 this file claimed until 2026-08-25. Read
+  // off the silicon rather than a datasheet, so it settles the question:
+  //
+  //   cpu0-cpu5  MIDR_EL1 0x412fd050  part 0xd05 = Cortex-A55  max 1794 MHz
+  //   cpu6-cpu7  MIDR_EL1 0x414fd0b1  part 0xd0b = Cortex-A76  max 2002 MHz
+  //
+  // MaxSpeed/CurrentSpeed below are the A76 and A55 nominals respectively.
   //
   {
     SMBIOS_TABLE_TYPE4  Type4;
@@ -290,7 +297,7 @@ SunxiSmbiosEntryPoint (
 
     Strs[0] = "CPU0";
     Strs[1] = "Allwinner";
-    Strs[2] = "Allwinner A733 (4x A76 + 4x A55)";
+    Strs[2] = "Allwinner A733 (2x A76 + 6x A55)";
     Strs[3] = "0000000000000000";
     Strs[4] = "A733";
 
