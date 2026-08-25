@@ -2180,6 +2180,405 @@ to see the firmware is alive."
 
 ---
 
+---
+
+### Task 8: Display Information page in Setup
+
+Puts what the firmware detected on screen, under Device Manager, where it can be read without a serial adapter.
+
+This matters more than a convenience feature. Task 6 reports the same information over UART, and the serial adapter on this bench cycles — works for minutes, drops, recovers. A tester with no adapter at all, which is most of them, currently has no way to find out what the firmware thinks is attached. This page is that way.
+
+Read-only in this task. A mode *selector* needs the working modeset from Plan 2 and a persistent variable store from the SPI NOR work, so it is deliberately out of scope here.
+
+Note that the Boot Maintenance Manager's console-configuration form already enumerates modes from `EFI_GRAPHICS_OUTPUT_PROTOCOL`, and will populate itself once Plan 2 publishes a real multi-mode GOP. No work is needed for that; it is empty today only because the GOP reports `MaxMode = 1`.
+
+**Files:**
+- Create: `Platform/OrangePi/OrangePi4ProPkg/Drivers/A733DisplayInfoDxe/DisplayInfoHii.vfr`
+- Create: `Platform/OrangePi/OrangePi4ProPkg/Drivers/A733DisplayInfoDxe/DisplayInfoStrings.uni`
+- Create: `Platform/OrangePi/OrangePi4ProPkg/Drivers/A733DisplayInfoDxe/DisplayInfoHii.h`
+- Modify: `Platform/OrangePi/OrangePi4ProPkg/Drivers/A733DisplayInfoDxe/DisplayInfo.c`
+- Modify: `Platform/OrangePi/OrangePi4ProPkg/Drivers/A733DisplayInfoDxe/A733DisplayInfoDxe.inf`
+
+**Interfaces:**
+- Consumes: `A733_EDID_INFO`, `A733EdidParse`, `A733EdidSelectBootMode` (Task 4); `A733HdmiDdcReadEdid` (Task 5); the serial-reporting entry point from Task 6.
+- Produces: an HII formset visible under Device Manager. Nothing later consumes it.
+
+- [ ] **Step 1: Create the header with the GUIDs and string-id budget**
+
+`Drivers/A733DisplayInfoDxe/DisplayInfoHii.h`:
+
+```c
+/** @file
+  HII identifiers for the Display Information page.
+  SPDX-License-Identifier: BSD-2-Clause-Patent
+**/
+#ifndef DISPLAY_INFO_HII_H_
+#define DISPLAY_INFO_HII_H_
+
+#define DISPLAY_INFO_FORMSET_GUID \
+  { 0x4E8A1B37, 0x92D6, 0x4C05, { 0xB1, 0x7F, 0x3A, 0x62, 0xC9, 0x80, 0x5D, 0x14 } }
+
+#define DISPLAY_INFO_FORM_ID  0x0001
+
+//
+// Eight mode rows is enough for every sink we have measured and keeps the form
+// on one screen. Sinks advertising more get the first eight plus a count.
+//
+#define DISPLAY_INFO_MAX_MODE_ROWS  8
+
+#endif // DISPLAY_INFO_HII_H_
+```
+
+- [ ] **Step 2: Create the string package**
+
+`Drivers/A733DisplayInfoDxe/DisplayInfoStrings.uni`:
+
+```
+// SPDX-License-Identifier: BSD-2-Clause-Patent
+/=#
+
+#langdef en-US "English"
+
+#string STR_FORM_TITLE          #language en-US "Display Information"
+#string STR_FORM_HELP           #language en-US "What the firmware detected on the HDMI output."
+
+#string STR_STATUS_PROMPT       #language en-US "Status"
+#string STR_STATUS_VALUE        #language en-US "unknown"
+
+#string STR_MONITOR_PROMPT      #language en-US "Monitor"
+#string STR_MONITOR_VALUE       #language en-US "unknown"
+
+#string STR_EDID_PROMPT         #language en-US "EDID"
+#string STR_EDID_VALUE          #language en-US "unknown"
+
+#string STR_MAXCLK_PROMPT       #language en-US "Declared max pixel clock"
+#string STR_MAXCLK_VALUE        #language en-US "unknown"
+
+#string STR_SELECTED_PROMPT     #language en-US "Mode that would be selected"
+#string STR_SELECTED_VALUE      #language en-US "unknown"
+
+#string STR_MODES_PROMPT        #language en-US "Supported modes"
+#string STR_MODE_0              #language en-US ""
+#string STR_MODE_1              #language en-US ""
+#string STR_MODE_2              #language en-US ""
+#string STR_MODE_3              #language en-US ""
+#string STR_MODE_4              #language en-US ""
+#string STR_MODE_5              #language en-US ""
+#string STR_MODE_6              #language en-US ""
+#string STR_MODE_7              #language en-US ""
+
+#string STR_EMPTY               #language en-US ""
+```
+
+- [ ] **Step 3: Create the form**
+
+`Drivers/A733DisplayInfoDxe/DisplayInfoHii.vfr`:
+
+```c
+// SPDX-License-Identifier: BSD-2-Clause-Patent
+
+#include "DisplayInfoHii.h"
+
+formset
+  guid      = DISPLAY_INFO_FORMSET_GUID,
+  title     = STRING_TOKEN(STR_FORM_TITLE),
+  help      = STRING_TOKEN(STR_FORM_HELP),
+  classguid = gEfiHiiPlatformSetupFormsetGuid,
+
+  form formid = DISPLAY_INFO_FORM_ID,
+       title  = STRING_TOKEN(STR_FORM_TITLE);
+
+    text
+      help   = STRING_TOKEN(STR_EMPTY),
+      text   = STRING_TOKEN(STR_STATUS_PROMPT),
+      text   = STRING_TOKEN(STR_STATUS_VALUE);
+
+    text
+      help   = STRING_TOKEN(STR_EMPTY),
+      text   = STRING_TOKEN(STR_MONITOR_PROMPT),
+      text   = STRING_TOKEN(STR_MONITOR_VALUE);
+
+    text
+      help   = STRING_TOKEN(STR_EMPTY),
+      text   = STRING_TOKEN(STR_EDID_PROMPT),
+      text   = STRING_TOKEN(STR_EDID_VALUE);
+
+    text
+      help   = STRING_TOKEN(STR_EMPTY),
+      text   = STRING_TOKEN(STR_MAXCLK_PROMPT),
+      text   = STRING_TOKEN(STR_MAXCLK_VALUE);
+
+    text
+      help   = STRING_TOKEN(STR_EMPTY),
+      text   = STRING_TOKEN(STR_SELECTED_PROMPT),
+      text   = STRING_TOKEN(STR_SELECTED_VALUE);
+
+    subtitle text = STRING_TOKEN(STR_EMPTY);
+    subtitle text = STRING_TOKEN(STR_MODES_PROMPT);
+
+    text help = STRING_TOKEN(STR_EMPTY), text = STRING_TOKEN(STR_MODE_0);
+    text help = STRING_TOKEN(STR_EMPTY), text = STRING_TOKEN(STR_MODE_1);
+    text help = STRING_TOKEN(STR_EMPTY), text = STRING_TOKEN(STR_MODE_2);
+    text help = STRING_TOKEN(STR_EMPTY), text = STRING_TOKEN(STR_MODE_3);
+    text help = STRING_TOKEN(STR_EMPTY), text = STRING_TOKEN(STR_MODE_4);
+    text help = STRING_TOKEN(STR_EMPTY), text = STRING_TOKEN(STR_MODE_5);
+    text help = STRING_TOKEN(STR_EMPTY), text = STRING_TOKEN(STR_MODE_6);
+    text help = STRING_TOKEN(STR_EMPTY), text = STRING_TOKEN(STR_MODE_7);
+
+  endform;
+
+endformset;
+```
+
+- [ ] **Step 4: Publish the package and fill it in**
+
+Add to `DisplayInfo.c`, and call `PublishDisplayInfoForm (&Info, Status)` from the entry point after parsing. Include `DisplayInfoHii.h`, `<Library/HiiLib.h>`, `<Library/PrintLib.h>`, `<Library/MemoryAllocationLib.h>`, and `<Guid/MdeModuleHii.h>`:
+
+```c
+extern UINT8  DisplayInfoHiiBin[];
+extern UINT8  A733DisplayInfoDxeStrings[];
+
+STATIC EFI_HII_HANDLE  mHiiHandle = NULL;
+
+STATIC CONST EFI_GUID  mFormsetGuid = DISPLAY_INFO_FORMSET_GUID;
+
+/**
+  Replace one string token's contents at runtime.
+
+  The form is static; the text in it is not. Every value on the page is a
+  placeholder token that gets overwritten here once the EDID has been read.
+**/
+STATIC
+VOID
+SetStr (
+  IN EFI_STRING_ID  Token,
+  IN CONST CHAR16   *Format,
+  ...
+  )
+{
+  VA_LIST  Marker;
+  CHAR16   Buffer[128];
+
+  VA_START (Marker, Format);
+  UnicodeVSPrint (Buffer, sizeof (Buffer), Format, Marker);
+  VA_END (Marker);
+
+  HiiSetString (mHiiHandle, Token, Buffer, NULL);
+}
+
+STATIC
+VOID
+PublishDisplayInfoForm (
+  IN CONST A733_EDID_INFO  *Info,
+  IN EFI_STATUS            ReadStatus
+  )
+{
+  UINTN                      Index;
+  CHAR16                     Mfr[4];
+  CONST A733_DISPLAY_TIMING  *Boot;
+  EFI_STRING_ID              ModeTokens[DISPLAY_INFO_MAX_MODE_ROWS];
+
+  ModeTokens[0] = STRING_TOKEN (STR_MODE_0);
+  ModeTokens[1] = STRING_TOKEN (STR_MODE_1);
+  ModeTokens[2] = STRING_TOKEN (STR_MODE_2);
+  ModeTokens[3] = STRING_TOKEN (STR_MODE_3);
+  ModeTokens[4] = STRING_TOKEN (STR_MODE_4);
+  ModeTokens[5] = STRING_TOKEN (STR_MODE_5);
+  ModeTokens[6] = STRING_TOKEN (STR_MODE_6);
+  ModeTokens[7] = STRING_TOKEN (STR_MODE_7);
+
+  mHiiHandle = HiiAddPackages (
+                 &mFormsetGuid,
+                 gImageHandle,
+                 A733DisplayInfoDxeStrings,
+                 DisplayInfoHiiBin,
+                 NULL
+                 );
+  if (mHiiHandle == NULL) {
+    DEBUG ((DEBUG_ERROR, "A733DisplayInfo: HiiAddPackages failed\n"));
+    return;
+  }
+
+  if (EFI_ERROR (ReadStatus)) {
+    //
+    // Say why, on screen. "No display detected" with a reason is diagnosable;
+    // a blank page is not.
+    //
+    SetStr (STRING_TOKEN (STR_STATUS_VALUE), L"no EDID (%r)", ReadStatus);
+    return;
+  }
+
+  SetStr (STRING_TOKEN (STR_STATUS_VALUE), L"display detected");
+
+  Mfr[0] = (CHAR16)(((Info->ManufacturerId >> 10) & 0x1F) + L'A' - 1);
+  Mfr[1] = (CHAR16)(((Info->ManufacturerId >> 5) & 0x1F) + L'A' - 1);
+  Mfr[2] = (CHAR16)((Info->ManufacturerId & 0x1F) + L'A' - 1);
+  Mfr[3] = L'\0';
+
+  SetStr (
+    STRING_TOKEN (STR_MONITOR_VALUE),
+    L"%s %a (0x%04x)",
+    Mfr,
+    Info->MonitorName,
+    Info->ProductCode
+    );
+
+  SetStr (STRING_TOKEN (STR_EDID_VALUE), L"%u modes parsed", (UINT32)Info->ModeCount);
+
+  if (Info->MaxPixelClockHz != 0) {
+    //
+    // Labelled advisory on purpose: this sink declares 140 MHz and then
+    // supplies a 148.5 MHz 1080p timing. Someone reading the page should know
+    // the number is not a limit we honour.
+    //
+    SetStr (
+      STRING_TOKEN (STR_MAXCLK_VALUE),
+      L"%u MHz (advisory, not enforced)",
+      Info->MaxPixelClockHz / 1000000
+      );
+  } else {
+    SetStr (STRING_TOKEN (STR_MAXCLK_VALUE), L"not declared");
+  }
+
+  Boot = A733EdidSelectBootMode (Info);
+  if (Boot != NULL) {
+    SetStr (
+      STRING_TOKEN (STR_SELECTED_VALUE),
+      L"%ux%u @ %u.%02u MHz",
+      Boot->HActive,
+      Boot->VActive,
+      Boot->PixelClockHz / 1000000,
+      (Boot->PixelClockHz % 1000000) / 10000
+      );
+  }
+
+  for (Index = 0; Index < DISPLAY_INFO_MAX_MODE_ROWS; Index++) {
+    if (Index >= Info->ModeCount) {
+      SetStr (ModeTokens[Index], L"");
+      continue;
+    }
+
+    SetStr (
+      ModeTokens[Index],
+      L"  %ux%u%s  %u.%02u MHz",
+      Info->Modes[Index].HActive,
+      Info->Modes[Index].VActive,
+      Info->Modes[Index].Interlaced ? L"i" : L"p",
+      Info->Modes[Index].PixelClockHz / 1000000,
+      (Info->Modes[Index].PixelClockHz % 1000000) / 10000
+      );
+  }
+
+  if (Info->ModeCount > DISPLAY_INFO_MAX_MODE_ROWS) {
+    SetStr (
+      ModeTokens[DISPLAY_INFO_MAX_MODE_ROWS - 1],
+      L"  ... and %u more",
+      (UINT32)(Info->ModeCount - DISPLAY_INFO_MAX_MODE_ROWS + 1)
+      );
+  }
+}
+```
+
+Also change the two early returns in `A733DisplayInfoEntry` so a failed read still publishes the form with its reason, rather than returning silently:
+
+```c
+  Status = A733HdmiDdcReadEdid (Edid, sizeof (Edid), &BytesRead);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "A733DisplayInfo: EDID read failed: %r\n", Status));
+    ZeroMem (&Info, sizeof (Info));
+    PublishDisplayInfoForm (&Info, Status);
+    return EFI_SUCCESS;
+  }
+```
+
+and likewise for the parse failure, passing the parse status.
+
+- [ ] **Step 5: Update the driver INF**
+
+`[Sources]` gains the VFR and the string file; `[LibraryClasses]` gains the HII and print libraries; a `[Guids]` and `[Depex]` entry are required:
+
+```ini
+[Sources]
+  DisplayInfo.c
+  DisplayInfoHii.h
+  DisplayInfoHii.vfr
+  DisplayInfoStrings.uni
+
+[LibraryClasses]
+  A733EdidLib
+  A733HdmiDdcLib
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+  HiiLib
+  MemoryAllocationLib
+  PrintLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+  UefiHiiServicesLib
+
+[Guids]
+  gEfiIfrTianoGuid                              ## CONSUMES ## HII
+
+[Depex]
+  gEfiHiiDatabaseProtocolGuid AND gEfiHiiStringProtocolGuid
+```
+
+The `[Depex]` change matters: the driver now needs the HII database to exist before it runs. With `TRUE` it could load first and `HiiAddPackages` would fail.
+
+- [ ] **Step 6: Add the required library mappings to the platform DSC**
+
+Confirm these are present in `[LibraryClasses.common]` of `OrangePi4Pro.dsc`, adding any that are missing:
+
+```ini
+  HiiLib|MdeModulePkg/Library/UefiHiiLib/UefiHiiLib.inf
+  UefiHiiServicesLib|MdeModulePkg/Library/UefiHiiServicesLib/UefiHiiServicesLib.inf
+  PrintLib|MdePkg/Library/BasePrintLib/BasePrintLib.inf
+```
+
+- [ ] **Step 7: Build**
+
+```bash
+cd ~/edk2 && ./build_edk2.sh
+```
+
+Expected: SUCCEEDS. A VFR compile error naming an unknown string token means a token used in the `.vfr` is missing from the `.uni`; they must match exactly.
+
+- [ ] **Step 8: Deploy and verify on screen**
+
+```bash
+cd ~/edk2 && ./build_edk2.sh --deploy
+```
+
+Boot into EDK2, enter Setup, and go to **Device Manager**. Expect a **Display Information** entry. Open it and confirm it shows the monitor identity, the parsed mode count, the advisory pixel-clock note, the selected mode, and the mode list.
+
+**This step needs no serial adapter** — that is the entire point of the task. Verify it by reading the screen.
+
+Cross-check the values against what Linux reports for the same display:
+
+```bash
+sshpass -p orangepi ssh -o StrictHostKeyChecking=no orangepi@192.168.0.201 \
+  'cat /sys/class/drm/card0-HDMI-A-1/modes'
+```
+
+- [ ] **Step 9: Commit**
+
+```bash
+cd ~/edk2-a733
+git add Platform/OrangePi/OrangePi4ProPkg
+git commit -m "feat(display): show detected display and modes in Setup
+
+Adds a Display Information page under Device Manager reporting the attached
+monitor, the modes parsed from its EDID, and the mode that would be selected.
+
+Task 6 reports the same information over serial, which is no help to a tester
+without a UART adapter -- which is most of them, and is the likeliest reason
+this port has drawn few contributors. This page needs only a screen.
+
+Read-only for now. A mode selector needs the modeset work and a persistent
+variable store, neither of which exists yet."
+```
+
 ## Self-Review
 
 **Spec coverage.** Plan 1 implements the spec's `EdidParserLib` (Tasks 1-4), `A733HdmiDdc` (Task 5), and the testing strategy's host-test layer (Task 1). The mode policy is implemented in Task 4 with 1080p first. Deliberately **not** covered here, and deferred to later plans: `Ccu.c`, `De.c`, `Tcon.c`, `HdmiTx.c`, `HdmiPhy.c`, the GOP producer, and the fallback-on-failure control flow — all of which depend on the CCU pixel-clock path, which the spec lists as an open item. The logo fix (Task 7) is not in the spec; it was found while measuring the artwork and is included because it is small, related, and currently a latent silent failure.
