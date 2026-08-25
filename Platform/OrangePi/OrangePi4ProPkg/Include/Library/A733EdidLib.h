@@ -59,4 +59,24 @@ A733EdidParseDtd (
   OUT A733_DISPLAY_TIMING  *Timing
   );
 
+BOOLEAN
+EFIAPI
+A733EdidCeaIsValid (
+  IN CONST UINT8  *Ext
+  );
+
+UINTN
+EFIAPI
+A733EdidCeaGetVics (
+  IN  CONST UINT8  *Ext,
+  OUT UINT8        *Vics,
+  IN  UINTN        MaxVics
+  );
+
+BOOLEAN
+EFIAPI
+A733EdidCeaHas1080p (
+  IN CONST UINT8  *Ext
+  );
+
 #endif // A733_EDID_LIB_H_

@@ -13,6 +13,7 @@
 
 [Sources]
   EdidBlock.c
+  EdidCea.c
   EdidDtd.c
   EdidInternal.h
 
