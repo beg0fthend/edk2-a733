@@ -130,6 +130,7 @@
 
   # NVVariable
   AuthVariableLib|MdeModulePkg/Library/AuthVariableLibNull/AuthVariableLibNull.inf
+  FileExplorerLib|MdeModulePkg/Library/FileExplorerLib/FileExplorerLib.inf
   VarCheckLib|MdeModulePkg/Library/VarCheckLib/VarCheckLib.inf
   TpmMeasurementLib|MdeModulePkg/Library/TpmMeasurementLibNull/TpmMeasurementLibNull.inf
 
@@ -155,13 +156,44 @@
 [LibraryClasses.common.DXE_RUNTIME_DRIVER]
   VariablePolicyLib|MdeModulePkg/Library/VariablePolicyLib/VariablePolicyLibRuntimeDxe.inf
 
+# FALLBACK (disabled): route DXE DEBUG() to the LCD instead of the UART.
+# Re-enable by uncommenting the block below ONLY if the serial link dies;
+# serial gives the full exception dump, the panel truncates it.
+#[LibraryClasses.common.DXE_DRIVER, LibraryClasses.common.UEFI_DRIVER, LibraryClasses.common.DXE_RUNTIME_DRIVER]
+  # Route DXE-phase DEBUG() output to ConOut -- i.e. the DE3.0 GOP console on
+  # the LCD panel -- instead of the UART.
+  #
+  # Rationale: the 3-pin debug UART on this board has never been reliable, and
+  # in EDK2 there is no SSH fallback, so a failed serial link means no debug
+  # output at all. GraphicsConsoleDxe + SunxiSimpleFbGopDxe already render the
+  # Boot Manager and Shell on the panel, so ConOut is a working channel; this
+  # makes the exception dump (PC/backtrace/ESR/FAR) photographable.
+  #
+  # Safe by construction: UefiDebugLibConOut guards its output with
+  #   if ((mDebugST != NULL) && (mDebugST->ConOut != NULL))
+  # so it is simply silent until GraphicsConsole binds, and it tracks
+  # ExitBootServices via mPostEBS for the runtime-driver case.
+  #
+  # NOTE: DXE_CORE is deliberately NOT overridden -- it prints before ConOut
+  # exists, so there is nothing to gain and it is the riskiest phase to touch.
+#  DebugLib|MdePkg/Library/UefiDebugLibConOut/UefiDebugLibConOut.inf
+
 ################################################################################
 [PcdsFixedAtBuild.common]
   #
-  # Serial / UART (NS16550, UART0 on Orange Pi 4 Pro)
-  # TODO: verify UART0 base and which UART is on the 40-pin debug header.
+  # Serial / UART (NS16550, UART7 on Orange Pi 4 Pro)
   #
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterBase|0x02500000
+  # UART7 (0x07080000), not UART0 (0x02500000). UART0's pins are reachable
+  # only on the 3-pin debug header, which has never produced output on this
+  # board. UART7's TX/RX are PL6/PL7, brought out on 40-pin header pins 8
+  # and 10 (GND on pin 9) -- a link verified byte-exact at 115200 under Linux.
+  #
+  # UART7 is in the CPUS power domain and nothing in the boot chain enables
+  # it, so A733UartLib ungates its clock and muxes its pins itself. The
+  # divisor is unchanged: uart0 and uart7 both run from the same 24MHz
+  # oscillator (both read DLL=0x0D at 115200).
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterBase|0x07080000
   gEfiMdeModulePkgTokenSpaceGuid.PcdSerialClockRate|24000000
   gEfiMdeModulePkgTokenSpaceGuid.PcdSerialBaudRate|115200
   gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterStride|4
@@ -210,12 +242,26 @@
   # Debug output level
   #
   gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x2F
-  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000000
+  # DEBUG_ERROR (0x80000000) | DEBUG_WARN (0x00000002) | DEBUG_LOAD (0x00000004).
+  # DEBUG_LOAD makes DxeCore print "Loading driver at 0x..." for every image,
+  # which is the only way to map a raw backtrace PC back to a module when the
+  # DebugImageInfoTable lookup comes up empty.
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000006
 
   #
   # BDS boot timeout (seconds). 0 = boot immediately, 0xFFFF = wait forever.
   #
-  gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut|10
+  gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut|5
+
+  #
+  # Firmware vendor / version strings shown on the Front Page banner and
+  # in SMBIOS Type 0/1. Bumped per release; see commit log for the build
+  # number that goes with the rev.
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor|L"Orange Pi 4 Pro EDK2 Port (beg0fthend)"
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString|L"v0.2-NVMe build #46"
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareReleaseDateString|L"2026-05-14"
+
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultBaudRate|115200
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultDataBits|8
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultParity|1
@@ -330,7 +376,7 @@
   # 0x04101000 / 0x04200000. SunxiUsbDxe registers them as NonDiscoverable
   # devices so the generic XhciDxe / EhciDxe drivers attach.
   #
-  MdeModulePkg/Bus/Pci/NonDiscoverablePciDeviceDxe/NonDiscoverablePciDeviceDxe.inf
+  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiNonDiscoverablePciDeviceDxe/NonDiscoverablePciDeviceDxe.inf
   MdeModulePkg/Bus/Pci/XhciDxe/XhciDxe.inf
   MdeModulePkg/Bus/Pci/EhciDxe/EhciDxe.inf
   MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
@@ -339,9 +385,46 @@
   Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiUsbDxe/SunxiUsbDxe.inf
 
   #
+  # SD card: SMHC0 @ 0x04020000. State-replay BlockIo driver (PIO reads) so
+  # EDK2 can load the kernel/initrd/dtb from the SD directly — no USB stick.
+  #
+  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiMmcDxe/SunxiMmcDxe.inf
+
+  #
+  # SPI0 master + SPI-NOR probe (state-replay PIO). Read-only first step
+  # toward EDK2 owning the on-board 16 MB SPI-NOR -> persistent UEFI vars.
+  #
+  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiSpiDxe/SunxiSpiDxe.inf
+
+  #
+  # PCIe / NVMe: A733 DesignWare RC, brought up from cold by SunxiPcieDxe.
+  # There is nothing to adopt: the vendor U-Boot is built with CONFIG_PCI and
+  # CONFIG_AW_CADENCE_COMBOPHY unset and never touches PCIe. The DBI window is
+  # not locked either, it is simply unclocked until the CCU gates and the
+  # Cadence combo PHY have been brought up, and reading it before that hangs
+  # the bus rather than returning zero.
+  #
+  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiPcieDxe/SunxiPcieDxe.inf
+  MdeModulePkg/Bus/Pci/NvmExpressDxe/NvmExpressDxe.inf
+
+  #
   # Display: SimpleFB GOP — exposes BSP-programmed framebuffer as GOP
   #
   Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiSimpleFbGopDxe/SunxiSimpleFbGopDxe.inf
+
+  #
+  # SMBIOS: producer (generic) + platform record publisher. Without these
+  # the FrontPage falls back to the placeholder 'Wonder Computer Model
+  # 1000Z' strings; with them, Setup shows real CPU/memory/board info.
+  #
+  MdeModulePkg/Universal/SmbiosDxe/SmbiosDxe.inf {
+    <LibraryClasses>
+      PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
+  }
+  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiSmbiosDxe/SunxiSmbiosDxe.inf {
+    <LibraryClasses>
+      PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
+  }
 
   #
   # Network (stub — add actual PHY driver later)
@@ -358,11 +441,56 @@
   MdeModulePkg/Application/UiApp/UiApp.inf {
     <LibraryClasses>
       PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
+      #
+      # The Front Page is built from NULL library instances, which the platform
+      # has to supply -- UiApp.inf does not pull them in itself. Without these
+      # three, Setup comes up essentially empty: the forms engine is running
+      # but nothing has registered any pages with it.
+      #
+      #   Device Manager            - devices and their HII configuration forms
+      #   Boot Manager              - pick a boot option now
+      #   Boot Maintenance Manager  - add, remove and reorder boot options,
+      #                               set the timeout, choose console devices
+      #
+      # Note that boot options edited here do not survive a reboot yet:
+      # PcdEmuVariableNvModeEnable is TRUE, so the variable store is RAM
+      # backed. Persisting them needs a real FVB driver over the SPI NOR plus
+      # FaultTolerantWriteDxe. That is also the prerequisite for Secure Boot,
+      # which additionally needs the real AuthVariableLib instead of the Null
+      # one, and SecurityPkg's SecureBootConfigDxe.
+      #
+      NULL|MdeModulePkg/Library/DeviceManagerUiLib/DeviceManagerUiLib.inf
+      NULL|MdeModulePkg/Library/BootManagerUiLib/BootManagerUiLib.inf
+      NULL|MdeModulePkg/Library/BootMaintenanceManagerUiLib/BootMaintenanceManagerUiLib.inf
   }
+  Platform/OrangePi/OrangePi4ProPkg/Drivers/OrangePiLogoDxe/OrangePiLogoDxe.inf
   MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
-  MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
-  MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
-  MdeModulePkg/Universal/DisplayEngineDxe/DisplayEngineDxe.inf
+  MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf {
+    <LibraryClasses>
+      PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
+  }
+  MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf {
+    <LibraryClasses>
+      PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
+  }
+  MdeModulePkg/Universal/DisplayEngineDxe/DisplayEngineDxe.inf {
+    <LibraryClasses>
+      PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
+  }
+
+  #
+  # BootManagerMenuApp — dedicated boot picker (F11/F12 hot-key target).
+  # DriverHealthManagerDxe — populates the 'Driver Health' menu entry in
+  # the Front Page so a half-attached driver can be inspected.
+  #
+  MdeModulePkg/Application/BootManagerMenuApp/BootManagerMenuApp.inf {
+    <LibraryClasses>
+      PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
+  }
+  MdeModulePkg/Universal/DriverHealthManagerDxe/DriverHealthManagerDxe.inf {
+    <LibraryClasses>
+      PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
+  }
 
   #
   # UEFI Shell
@@ -383,3 +511,10 @@
     <PcdsFixedAtBuild>
       gEfiShellPkgTokenSpaceGuid.PcdShellLibAutoInitialize|FALSE
   }
+
+  #
+  # BootDebian — native EDK2 hand-off to an EFI-stub Linux kernel on USB
+  # (installs the FDT config table + initrd LoadFile2, then LoadImage/StartImage
+  # \Image). Registered as a boot option by PlatformBootManagerLib; retires GRUB.
+  #
+  Platform/OrangePi/OrangePi4ProPkg/Drivers/BootDebian/BootDebian.inf

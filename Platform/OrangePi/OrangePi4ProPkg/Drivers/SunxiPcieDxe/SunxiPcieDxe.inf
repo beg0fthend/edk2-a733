@@ -1,0 +1,43 @@
+## @file
+#  SunxiPcieDxe - bring the Allwinner A733 (sun60iw2) DesignWare PCIe root
+#  complex up from cold, so the generic EDK2 PCI stack and NvmExpressDxe can
+#  attach to whatever is in the slot.
+#
+#  This replaces a driver that assumed BSP U-Boot had already trained the
+#  link. It had not: the vendor U-Boot on this board is built with CONFIG_PCI
+#  and CONFIG_AW_CADENCE_COMBOPHY unset and never touches PCIe. The old code
+#  read the DBI window before any clock was running and hung with no output,
+#  which was recorded at the time as a "locked" DBI. The block was not locked,
+#  it was unclocked.
+#
+#  Copyright (c) 2026, carpi-os contributors.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION    = 0x00010005
+  BASE_NAME      = SunxiPcieDxe
+  FILE_GUID      = 6B7E2D34-1A4F-4D8C-9E2F-7C9B5D3E1A20
+  MODULE_TYPE    = DXE_DRIVER
+  VERSION_STRING = 1.0
+  ENTRY_POINT    = SunxiPcieDxeEntry
+
+[Sources]
+  SunxiPcieDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+
+[LibraryClasses]
+  BaseLib
+  NonDiscoverableDeviceRegistrationLib
+  BaseMemoryLib
+  DebugLib
+  IoLib
+  TimerLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+
+[Depex]
+  TRUE

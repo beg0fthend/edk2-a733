@@ -126,7 +126,7 @@
   INF  MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
   INF  FatPkg/EnhancedFatDxe/Fat.inf
 
-  INF  MdeModulePkg/Bus/Pci/NonDiscoverablePciDeviceDxe/NonDiscoverablePciDeviceDxe.inf
+  INF  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiNonDiscoverablePciDeviceDxe/NonDiscoverablePciDeviceDxe.inf
   INF  MdeModulePkg/Bus/Pci/XhciDxe/XhciDxe.inf
   INF  MdeModulePkg/Bus/Pci/EhciDxe/EhciDxe.inf
   INF  MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
@@ -134,8 +134,32 @@
   INF  MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
   INF  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiUsbDxe/SunxiUsbDxe.inf
 
+  # SD card: SMHC0 state-replay BlockIo (PIO) so EDK2 reads /boot from SD.
+  INF  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiMmcDxe/SunxiMmcDxe.inf
+
+  # SPI0 master + SPI-NOR probe (read-only): toward EDK2-owned flash + NV vars.
+  INF  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiSpiDxe/SunxiSpiDxe.inf
+
+  # PCIe / NVMe: SunxiPcieDxe brings the root complex up from cold.
+  #
+  # This was disabled for a long time because the old driver stalled the CPU on
+  # 6x MmioRead32 of the DBI window before its first DEBUG(). That note asked to
+  # re-enable "once the DBI block is clocked", which is exactly what the rewrite
+  # does: the DBI was never locked, it was unclocked, and the driver now runs
+  # the CCU gates, resets and the Cadence combo PHY before touching it.
+  #
+  # The entry point returns EFI_SUCCESS even when the link fails to train, so a
+  # PCIe problem cannot stop the rest of the firmware from booting, and every
+  # step prints before it runs so a hang is attributable from the UART log.
+  INF  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiPcieDxe/SunxiPcieDxe.inf
+  INF  MdeModulePkg/Bus/Pci/NvmExpressDxe/NvmExpressDxe.inf
+
   # Display: SimpleFB GOP (passes BSP-programmed framebuffer through to UEFI)
   INF  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiSimpleFbGopDxe/SunxiSimpleFbGopDxe.inf
+
+  # SMBIOS protocol producer + Allwinner A733 record publisher.
+  INF  MdeModulePkg/Universal/SmbiosDxe/SmbiosDxe.inf
+  INF  Platform/OrangePi/OrangePi4ProPkg/Drivers/SunxiSmbiosDxe/SunxiSmbiosDxe.inf
 
   # GraphicsConsoleDxe: bind ConsoleOut to the GOP framebuffer so boot
   # manager menus / Shell prompt render on the panel, not just UART.
@@ -143,12 +167,18 @@
 
   INF  MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
   INF  MdeModulePkg/Application/UiApp/UiApp.inf
+  INF  MdeModulePkg/Application/BootManagerMenuApp/BootManagerMenuApp.inf
+  INF  MdeModulePkg/Universal/DriverHealthManagerDxe/DriverHealthManagerDxe.inf
+  INF  Platform/OrangePi/OrangePi4ProPkg/Drivers/OrangePiLogoDxe/OrangePiLogoDxe.inf
   INF  MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
   INF  MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
   INF  MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
   INF  MdeModulePkg/Universal/DisplayEngineDxe/DisplayEngineDxe.inf
 
   INF  ShellPkg/Application/Shell/Shell.inf
+
+  # BootDebian: native EDK2 -> EFI-stub kernel hand-off from USB (retires GRUB).
+  INF  Platform/OrangePi/OrangePi4ProPkg/Drivers/BootDebian/BootDebian.inf
 
 ################################################################################
 [Rule.Common.SEC.SELF_RELOC]
