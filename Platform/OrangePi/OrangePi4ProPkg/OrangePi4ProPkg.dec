@@ -14,6 +14,10 @@
 [Includes]
   Include
 
+[LibraryClasses]
+  ##  @libraryclass  EDID parsing, pure logic, host-testable.
+  A733EdidLib|Include/Library/A733EdidLib.h
+
 [Guids]
   gOrangePi4ProTokenSpaceGuid = { 0x4E2C9F1A, 0x6B5D, 0x4F3E, { 0x8A, 0x71, 0xC2, 0xD4, 0xE5, 0xF6, 0x07, 0x18 } }
 
