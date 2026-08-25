@@ -34,6 +34,35 @@ typedef struct {
   BOOLEAN    VSyncPositive;
 } A733_DISPLAY_TIMING;
 
+///
+/// Everything the display stack needs from an EDID.
+///
+typedef struct {
+  A733_DISPLAY_TIMING    Modes[A733_EDID_MAX_MODES];
+  UINTN                  ModeCount;
+  UINTN                  PreferredIndex;
+  BOOLEAN                PreferredValid;
+  UINT16                 ManufacturerId;
+  UINT16                 ProductCode;
+  CHAR8                  MonitorName[14];
+  UINT32                 MaxPixelClockHz;   ///< 0 when not declared. ADVISORY ONLY.
+  BOOLEAN                Has1080p;
+} A733_EDID_INFO;
+
+EFI_STATUS
+EFIAPI
+A733EdidParse (
+  IN  CONST UINT8     *Edid,
+  IN  UINTN           Size,
+  OUT A733_EDID_INFO  *Info
+  );
+
+CONST A733_DISPLAY_TIMING *
+EFIAPI
+A733EdidSelectBootMode (
+  IN CONST A733_EDID_INFO  *Info
+  );
+
 BOOLEAN
 EFIAPI
 A733EdidHeaderIsValid (

@@ -15,6 +15,7 @@
   EdidBlock.c
   EdidCea.c
   EdidDtd.c
+  EdidModes.c
   EdidInternal.h
 
 [Packages]

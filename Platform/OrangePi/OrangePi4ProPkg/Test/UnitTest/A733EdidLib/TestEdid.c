@@ -173,6 +173,112 @@ TestCeaRejectsNonCea (
   return UNIT_TEST_PASSED;
 }
 
+STATIC
+UNIT_TEST_STATUS
+EFIAPI
+TestParseFull (
+  IN UNIT_TEST_CONTEXT  Context
+  )
+{
+  A733_EDID_INFO  Info;
+
+  UT_ASSERT_NOT_EFI_ERROR (A733EdidParse (gEdidMpi7010, gEdidMpi7010Size, &Info));
+
+  UT_ASSERT_TRUE (Info.PreferredValid);
+  UT_ASSERT_EQUAL (Info.Modes[Info.PreferredIndex].HActive, 1024);
+  UT_ASSERT_EQUAL (Info.Modes[Info.PreferredIndex].VActive, 600);
+
+  UT_ASSERT_TRUE (Info.Has1080p);
+  UT_ASSERT_EQUAL (Info.MaxPixelClockHz, 140000000);   // declared, and wrong
+  UT_ASSERT_EQUAL (AsciiStrCmp (Info.MonitorName, "MPI7010"), 0);
+
+  return UNIT_TEST_PASSED;
+}
+
+STATIC
+UNIT_TEST_STATUS
+EFIAPI
+TestRangeLimitsDoNotVeto1080p (
+  IN UNIT_TEST_CONTEXT  Context
+  )
+{
+  A733_EDID_INFO             Info;
+  CONST A733_DISPLAY_TIMING  *Mode;
+  UINTN                      Index;
+  BOOLEAN                    Found;
+
+  UT_ASSERT_NOT_EFI_ERROR (A733EdidParse (gEdidMpi7010, gEdidMpi7010Size, &Info));
+
+  // This sink declares max 140 MHz and then supplies a 148.5 MHz 1080p60
+  // timing. The 1080p mode must survive. Filtering by range limits here would
+  // permanently exclude Full HD from a display that plainly supports it.
+  Found = FALSE;
+  for (Index = 0; Index < Info.ModeCount; Index++) {
+    if ((Info.Modes[Index].HActive == 1920) && (Info.Modes[Index].VActive == 1080) &&
+        !Info.Modes[Index].Interlaced) {
+      Found = TRUE;
+      UT_ASSERT_EQUAL (Info.Modes[Index].PixelClockHz, 148500000);
+    }
+  }
+
+  UT_ASSERT_TRUE (Found);
+
+  // And the boot mode must be 1080p, not the 1024x600 preferred timing.
+  Mode = A733EdidSelectBootMode (&Info);
+  UT_ASSERT_NOT_NULL ((VOID *)Mode);
+  UT_ASSERT_EQUAL (Mode->HActive, 1920);
+  UT_ASSERT_EQUAL (Mode->VActive, 1080);
+
+  return UNIT_TEST_PASSED;
+}
+
+STATIC
+UNIT_TEST_STATUS
+EFIAPI
+TestBadExtensionKeepsBaseBlock (
+  IN UNIT_TEST_CONTEXT  Context
+  )
+{
+  UINT8           Corrupt[256];
+  A733_EDID_INFO  Info;
+
+  CopyMem (Corrupt, gEdidMpi7010, sizeof (Corrupt));
+
+  // Wreck the extension: wrong tag and a broken checksum.
+  Corrupt[128] = 0xAA;
+  Corrupt[255] = 0x00;
+
+  // Base block modes must survive. Discarding them because the extension is
+  // bad is the single most damaging thing an EDID parser can do.
+  UT_ASSERT_NOT_EFI_ERROR (A733EdidParse (Corrupt, sizeof (Corrupt), &Info));
+  UT_ASSERT_TRUE (Info.PreferredValid);
+  UT_ASSERT_EQUAL (Info.Modes[Info.PreferredIndex].HActive, 1024);
+  UT_ASSERT_TRUE (Info.ModeCount > 0);
+
+  return UNIT_TEST_PASSED;
+}
+
+STATIC
+UNIT_TEST_STATUS
+EFIAPI
+TestExtensionCountLiesAreHarmless (
+  IN UNIT_TEST_CONTEXT  Context
+  )
+{
+  UINT8           Truncated[128];
+  A733_EDID_INFO  Info;
+
+  // Byte 126 claims an extension, but only 128 bytes are supplied. Parsing
+  // must not read past the buffer.
+  CopyMem (Truncated, gEdidMpi7010, sizeof (Truncated));
+  UT_ASSERT_EQUAL (Truncated[126], 1);
+
+  UT_ASSERT_NOT_EFI_ERROR (A733EdidParse (Truncated, sizeof (Truncated), &Info));
+  UT_ASSERT_TRUE (Info.PreferredValid);
+
+  return UNIT_TEST_PASSED;
+}
+
 INT32
 main (
   INT32  Argc,
@@ -202,6 +308,10 @@ main (
   AddTestCase (Suite, "Display descriptor is not a timing", "DtdReject", TestParseDtdRejectsDisplayDescriptor, NULL, NULL, NULL);
   AddTestCase (Suite, "CEA extension yields expected VICs", "Cea", TestCeaExtension, NULL, NULL, NULL);
   AddTestCase (Suite, "Non-CEA block is rejected", "CeaReject", TestCeaRejectsNonCea, NULL, NULL, NULL);
+  AddTestCase (Suite, "Full parse extracts identity and modes", "ParseFull", TestParseFull, NULL, NULL, NULL);
+  AddTestCase (Suite, "Range limits never veto 1080p", "NoVeto", TestRangeLimitsDoNotVeto1080p, NULL, NULL, NULL);
+  AddTestCase (Suite, "Bad extension keeps base block modes", "BadExt", TestBadExtensionKeepsBaseBlock, NULL, NULL, NULL);
+  AddTestCase (Suite, "Lying extension count is safe", "ExtLie", TestExtensionCountLiesAreHarmless, NULL, NULL, NULL);
 
   Status = RunAllTestSuites (Fw);
   FreeUnitTestFramework (Fw);
