@@ -52,4 +52,11 @@ A733EdidExtensionCount (
   IN CONST UINT8  *Edid
   );
 
+BOOLEAN
+EFIAPI
+A733EdidParseDtd (
+  IN  CONST UINT8          *Descriptor,
+  OUT A733_DISPLAY_TIMING  *Timing
+  );
+
 #endif // A733_EDID_LIB_H_
