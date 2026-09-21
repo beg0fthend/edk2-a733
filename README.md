@@ -117,7 +117,7 @@ artwork changes.
 
 ```
 Orange Pi 4 Pro
-Allwinner A733 (4x A76 + 4x A55)          1.80 GHz
+Allwinner A733 (2x A76 + 6x A55)          1.80 GHz
 v0.2-NVMe build #46                       6144 MB RAM
 
   Select Language        <Standard English>

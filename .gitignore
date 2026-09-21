@@ -10,3 +10,4 @@ Conf/
 *.swp
 *.bak
 spi_factory_backup.bin
+.superpowers/

@@ -1,0 +1,28 @@
+## @file
+#  EDID parsing library for the A733 display stack.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION    = 0x00010005
+  BASE_NAME      = A733EdidLib
+  FILE_GUID      = 1E9D3C08-57A4-42F6-B0D1-6C83A594E27B
+  MODULE_TYPE    = BASE
+  VERSION_STRING = 1.0
+  LIBRARY_CLASS  = A733EdidLib
+
+[Sources]
+  EdidBlock.c
+  EdidCea.c
+  EdidDtd.c
+  EdidModes.c
+  EdidInternal.h
+
+[Packages]
+  MdePkg/MdePkg.dec
+  Platform/OrangePi/OrangePi4ProPkg/OrangePi4ProPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  DebugLib

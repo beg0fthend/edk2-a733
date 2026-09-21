@@ -1,0 +1,27 @@
+## @file
+#  Host-based unit tests for A733EdidLib.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION    = 0x00010005
+  BASE_NAME      = A733EdidLibHostTest
+  FILE_GUID      = 7C4E1A90-3B62-4D18-9E55-2A7F0C31B846
+  MODULE_TYPE    = HOST_APPLICATION
+  VERSION_STRING = 1.0
+
+[Sources]
+  TestEdid.c
+  TestData.c
+  TestData.h
+
+[Packages]
+  MdePkg/MdePkg.dec
+  Platform/OrangePi/OrangePi4ProPkg/OrangePi4ProPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+  UnitTestLib
+  A733EdidLib
